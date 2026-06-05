@@ -2,10 +2,11 @@ import Config
 
 # Configure your database
 config :ca_heo_shop, CaHeoShop.Repo,
-  username: "postgres",
-  password: "postgres",
+  username: "ca_heo_shop_local",
+  password: "ca_heo_shop_local",
   hostname: "localhost",
-  database: "ca_heo_shop_dev",
+  port: 15432,
+  database: "ca_heo_shop_local",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

@@ -1,0 +1,11 @@
+# Use postgres/example user/password credentials
+services:
+  db:
+    image: postgres:18
+    restart: always
+    ports:
+      - 15432:5432
+    environment:
+      POSTGRES_DB: ca_heo_shop_local
+      POSTGRES_USER: ca_heo_shop_local
+      POSTGRES_PASSWORD: ca_heo_shop_local
