@@ -6,7 +6,9 @@ Read the following documents before making changes:
 - agents/010_business-context.md
 - agents/011_architecture.md
 - agents/012_database-model.md
+- agents/015_ui-system.md
 - agents/020_decisions.md
+
 
 - research/001_nexus-design-guideline.md
 - research/002_online-store-design-guideline.md
