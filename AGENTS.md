@@ -9,6 +9,7 @@ Read the following documents before making changes:
 - agents/020_decisions.md
 
 - research/001_nexus-design-guideline.md
+- research/002_online-store-design-guideline.md
 - research/003_daisyui-design-guideline.md
 
 - Task workflow: `agents/013_task-workflow.md`
