@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 675" role="img" aria-label="3D printed category">
+  <rect width="900" height="675" fill="#1f2937"/>
+  <path d="M450 125 690 255v260L450 650 210 515V255z" fill="#f97316"/>
+  <path d="M450 125 690 255 450 390 210 255z" fill="#fb923c"/>
+  <path d="M450 390v260L210 515V255z" fill="#ea580c"/>
+  <path d="M450 390 690 255v260L450 650z" fill="#c2410c"/>
+</svg>

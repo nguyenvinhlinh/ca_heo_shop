@@ -17,12 +17,6 @@ defmodule CaHeoShopWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", CaHeoShopWeb do
-    pipe_through :browser
-
-    get "/", PageController, :home
-  end
-
   # Other scopes may use custom stacks.
   # scope "/api", CaHeoShopWeb do
   #   pipe_through :api
@@ -64,6 +58,17 @@ defmodule CaHeoShopWeb.Router do
 
     live_session :current_user,
       on_mount: [{CaHeoShopWeb.UserAuth, :mount_current_scope}] do
+      live "/", StorefrontLive, :home
+      live "/products", StorefrontLive, :products
+      live "/products/:slug", StorefrontLive, :product
+      live "/collections", StorefrontLive, :collections
+      live "/collections/:slug", StorefrontLive, :collection
+      live "/cart", StorefrontLive, :cart
+      live "/checkout", StorefrontLive, :checkout
+      live "/account", StorefrontLive, :account
+      live "/orders", StorefrontLive, :orders
+      live "/account/settings", StorefrontLive, :account_settings
+
       live "/users/register", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new

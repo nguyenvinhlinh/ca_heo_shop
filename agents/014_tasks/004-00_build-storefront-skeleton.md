@@ -1,4 +1,4 @@
-# Task: Build Storefront Skeleton
+# Task 004: Build Storefront Skeleton
 
 ## Objective
 
