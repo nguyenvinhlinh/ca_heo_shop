@@ -100,11 +100,11 @@ The proposed cart schema must support these initial fields:
 
 ```text
 customer_id
-product_id
+product_variant_id
 quantity
 ```
 
-These requirements are intentionally minimal.
+These requirements are intentionally minimal. `product_variant_id` is required because a product alone is not enough to determine price, cost, stock, or selected option.
 
 During research, if additional fields appear necessary, propose them clearly and explain why.
 
@@ -145,19 +145,20 @@ The research document should explain:
 
 ### Product Relationship
 
-Each cart row should belong to one product.
+Each cart row should belong to one selected product variant.
 
 Expected field:
 
 ```text
-product_id
+product_variant_id
 ```
 
 Research and document:
 
-* How this relates to the proposed `products` table
-* Whether the product price should be copied into cart or read from product
-* Whether product deletion should restrict, nullify, or delete related cart rows
+* How this relates to the proposed `product_variants` table
+* Why `product_id` is not enough to determine price
+* Whether the variant price should be copied into cart or read from product variant
+* Whether product or variant deletion should restrict, nullify, or delete related cart rows
 
 For the first implementation, prefer simple cart behavior.
 
@@ -203,7 +204,7 @@ Example Option A:
 carts
 - id
 - customer_id
-- product_id
+- product_variant_id
 - quantity
 - inserted_at
 - updated_at
@@ -222,7 +223,7 @@ carts
 cart_items
 - id
 - cart_id
-- product_id
+- product_variant_id
 - quantity
 - inserted_at
 - updated_at
@@ -238,7 +239,7 @@ with:
 
 ```text
 customer_id
-product_id
+product_variant_id
 quantity
 ```
 
@@ -315,9 +316,9 @@ Research:
 
 * Whether products have stable IDs yet
 * Whether product slugs are used in cart UI
-* Whether cart should store `product_id` only
-* Whether product image and product name should be read through product association
-* Whether price should be read from product or snapshotted later in order items
+* Why cart should store `product_variant_id`
+* Whether product image and product name should be read through product variant/product associations
+* Whether price should be read from product variant or snapshotted later in order items
 
 Cart should usually stay simple. Order pricing snapshots should be handled in a future orders schema.
 
@@ -332,7 +333,7 @@ At minimum, evaluate these fields:
 ```text
 id
 customer_id
-product_id
+product_variant_id
 quantity
 inserted_at
 updated_at
@@ -363,10 +364,10 @@ Evaluate:
 
 ```text
 foreign key from carts.customer_id to users.id
-foreign key from carts.product_id to products.id
-unique index on customer_id + product_id
+foreign key from carts.product_variant_id to product_variants.id
+unique index on customer_id + product_variant_id
 index on customer_id
-index on product_id
+index on product_variant_id
 not null constraints
 quantity positive constraint
 ```
@@ -379,7 +380,13 @@ The research document should explain why a unique index on:
 customer_id + product_id
 ```
 
-may be useful to prevent duplicate cart rows for the same product.
+is not enough when products have variants. The research document should explain why a unique index on:
+
+```text
+customer_id + product_variant_id
+```
+
+is useful to prevent duplicate cart rows for the same selected product variant.
 
 ---
 
@@ -402,7 +409,7 @@ carts
 CaHeoShop.Carts.Cart
 CaHeoShop.Carts
 customer_id
-product_id
+product_variant_id
 ```
 
 Also evaluate whether this would be better as:
@@ -449,15 +456,15 @@ Example format:
 ```elixir
 create table(:carts) do
   add :customer_id, references(:users, on_delete: :delete_all), null: false
-  add :product_id, references(:products, on_delete: :restrict), null: false
+  add :product_variant_id, references(:product_variants, on_delete: :restrict), null: false
   add :quantity, :integer, null: false, default: 1
 
   timestamps(type: :utc_datetime)
 end
 
 create index(:carts, [:customer_id])
-create index(:carts, [:product_id])
-create unique_index(:carts, [:customer_id, :product_id])
+create index(:carts, [:product_variant_id])
+create unique_index(:carts, [:customer_id, :product_variant_id])
 ```
 
 If research recommends `user_id` instead of `customer_id`, document that clearly.
