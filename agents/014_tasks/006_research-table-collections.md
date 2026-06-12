@@ -188,9 +188,9 @@ Each collection must have a field controlling its display order in storefront na
 
 Purpose:
 
-* Control ordering inside the `Shop -> Collections` dropdown
-* Control ordering on `/collections`
-* Support manual admin ordering in the future
+* Control ordering inside the header `Collections` navigation dropdown
+* Support manual admin navigation ordering in the future
+* Hide a collection from the header navigation when the value is `NULL`
 
 Possible field names to evaluate:
 
@@ -198,7 +198,7 @@ Possible field names to evaluate:
 position
 sort_order
 nav_order
-display_order
+nav_display_order
 ```
 
 Recommend one field name.
@@ -206,8 +206,18 @@ Recommend one field name.
 Preferred candidate:
 
 ```text
-display_order
+nav_display_order
 ```
+
+Field behavior:
+
+```text
+nav_display_order integer, nullable
+```
+
+Ordering starts from `0` for collections shown in header navigation.
+
+If `nav_display_order` is `NULL`, the header navigation UI must not display that collection name.
 
 ---
 
@@ -298,7 +308,7 @@ name_vi
 name_en
 slug
 image_filename
-display_order
+nav_display_order
 inserted_at
 updated_at
 ```
@@ -336,10 +346,10 @@ Evaluate:
 
 ```text
 unique index on slug
-index on display_order
-not null constraints
+index on nav_display_order
+nullable nav_display_order behavior
 slug format expectations
-display_order default value
+nav_display_order starts from 0 when present
 ```
 
 Also document tradeoffs.
@@ -362,8 +372,8 @@ Examples to evaluate:
 
 ```text
 collections
-CaHeoShop.Catalog.Collection
-CaHeoShop.Catalog
+CaHeoShop.Collection
+CaHeoShop.Collections.Collection
 products.collection_id
 ```
 
@@ -405,13 +415,13 @@ create table(:collections) do
   add :name_en, :string
   add :slug, :string, null: false
   add :image_filename, :string
-  add :display_order, :integer, null: false, default: 0
+  add :nav_display_order, :integer
 
   timestamps(type: :utc_datetime)
 end
 
 create unique_index(:collections, [:slug])
-create index(:collections, [:display_order])
+create index(:collections, [:nav_display_order])
 ```
 
 This sample should be treated as a proposal, not implementation.
