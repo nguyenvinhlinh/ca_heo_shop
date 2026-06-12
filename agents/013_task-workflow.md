@@ -1,5 +1,4 @@
-021_create-collection-table.md
-022_create-product-table.md
-023_create-product-images-table.md
-024_create-product-variants-table.md
-025_create-cart-items-table.md
+026_implement-admin-collections-index.md
+027_implement-admin-collection-new.md
+028_implement-admin-collection-edit.md
+029_implement-admin-collection-delete.md
