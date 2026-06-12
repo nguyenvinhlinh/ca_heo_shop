@@ -43,7 +43,7 @@ No real catalog, cart, checkout, or order persistence exists yet.
 Existing related research:
 
 - `research/010_table-collections.md` exists and recommends `products.collection_id`.
-- `research/012-table-carts.md` does not exist yet.
+- `research/012-table-cart-items.md` exists and recommends cart items reference `product_variants.id`.
 - `research/013_table-sale-orders.md` does not exist yet.
 
 Storefront mock product fields currently include:

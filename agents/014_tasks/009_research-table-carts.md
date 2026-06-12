@@ -7,7 +7,7 @@ Research the current storefront, cart, checkout, user/authentication model, and 
 The expected output is a research document:
 
 ```text
-research/012-table-carts.md
+research/012-table-cart-items.md
 ```
 
 This task is for research and database design proposal only.
@@ -21,10 +21,10 @@ Do not create migrations, Ecto schemas, Ecto contexts, or real cart behavior in 
 Create the following file:
 
 ```text
-research/012-table-carts.md
+research/012-table-cart-items.md
 ```
 
-The document should describe the proposed database schema for `carts` based on:
+The document should describe the proposed database schema for `cart_items` based on:
 
 * Current cart UI
 * Current checkout UI
@@ -192,7 +192,7 @@ Research whether the project should use:
 
 ```text
 Option A:
-A single carts table where each row represents one product in one customer's cart.
+A single cart_items table where each row represents one selected product variant in one customer's cart.
 
 Option B:
 A carts table representing the cart header, plus a cart_items table representing products in the cart.
@@ -201,7 +201,7 @@ A carts table representing the cart header, plus a cart_items table representing
 Example Option A:
 
 ```text
-carts
+cart_items
 - id
 - customer_id
 - product_variant_id
@@ -229,10 +229,10 @@ cart_items
 - updated_at
 ```
 
-The user’s initial requirement uses the table name:
+The current requirement uses the table name:
 
 ```text
-carts
+cart_items
 ```
 
 with:
@@ -246,10 +246,10 @@ quantity
 So the research document should evaluate whether this means:
 
 ```text
-carts as cart line items
+cart_items as cart line items
 ```
 
-or whether a more explicit `cart_items` table should be introduced later.
+or whether a separate `carts` header table should be introduced later.
 
 For the first implementation, recommend the simplest schema that supports the current UI.
 
@@ -363,8 +363,8 @@ The research document should recommend database constraints and indexes.
 Evaluate:
 
 ```text
-foreign key from carts.customer_id to users.id
-foreign key from carts.product_variant_id to product_variants.id
+foreign key from cart_items.customer_id to users.id
+foreign key from cart_items.product_variant_id to product_variants.id
 unique index on customer_id + product_variant_id
 index on customer_id
 index on product_variant_id
@@ -405,8 +405,8 @@ Route usage
 Examples to evaluate:
 
 ```text
-carts
-CaHeoShop.Carts.Cart
+cart_items
+CaHeoShop.Carts.CartItem
 CaHeoShop.Carts
 customer_id
 product_variant_id
@@ -416,7 +416,7 @@ Also evaluate whether this would be better as:
 
 ```text
 cart_items
-CaHeoShop.Cart.CartItem
+CaHeoShop.Carts.CartItem
 ```
 
 or under a broader commerce context later.
@@ -427,14 +427,14 @@ Do not implement naming changes in this task.
 
 ## Expected Output Structure
 
-The file `research/012-table-carts.md` should contain:
+The file `research/012-table-cart-items.md` should contain:
 
 1. Overview
 2. Current UI Findings
 3. Current Authentication and Customer Model
 4. Product Relationship Analysis
 5. Cart Schema Design Options
-6. Proposed `carts` Table
+6. Proposed `cart_items` Table
 7. Field-by-Field Explanation
 8. Indexes and Constraints
 9. Recommended Ecto Schema Shape
@@ -454,7 +454,7 @@ Do not create the actual migration file.
 Example format:
 
 ```elixir
-create table(:carts) do
+create table(:cart_items) do
   add :customer_id, references(:users, on_delete: :delete_all), null: false
   add :product_variant_id, references(:product_variants, on_delete: :restrict), null: false
   add :quantity, :integer, null: false, default: 1
@@ -462,14 +462,14 @@ create table(:carts) do
   timestamps(type: :utc_datetime)
 end
 
-create index(:carts, [:customer_id])
-create index(:carts, [:product_variant_id])
-create unique_index(:carts, [:customer_id, :product_variant_id])
+create index(:cart_items, [:customer_id])
+create index(:cart_items, [:product_variant_id])
+create unique_index(:cart_items, [:customer_id, :product_variant_id])
 ```
 
 If research recommends `user_id` instead of `customer_id`, document that clearly.
 
-If research recommends `cart_items` instead of a single `carts` table, provide the alternative sample migration shape as a proposal only.
+If research recommends a `carts` header table plus `cart_items` instead of a single `cart_items` table, provide the alternative sample migration shape as a proposal only.
 
 These samples should be treated as proposals, not implementation.
 
@@ -493,12 +493,12 @@ However:
 
 The task is complete when:
 
-* `research/012-table-carts.md` is created.
+* `research/012-table-cart-items.md` is created.
 * The document is based on current UI and mock data observations.
 * The known cart requirements are addressed.
 * The relationship between cart, customer, and product is clearly explained.
 * The document evaluates whether `customer_id` should reference `users.id`.
-* The document evaluates whether `carts` should be a line-item table or whether `cart_items` should exist later.
+* The document evaluates whether `cart_items` should be a line-item table or whether a separate `carts` header table should exist later.
 * Required fields are identified.
 * Optional or deferred fields are separated from required fields.
 * Indexes and constraints are recommended.

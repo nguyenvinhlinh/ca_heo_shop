@@ -83,7 +83,7 @@ There is no separate `customers` table yet. The current `users` table represents
 Recommended first relationship:
 
 ```text
-carts.customer_id -> users.id
+cart_items.customer_id -> users.id
 ```
 
 Use the column name `customer_id` because it describes the role of the user in the ecommerce workflow. In Ecto this can still point to `CaHeoShop.Accounts.User`:
@@ -135,12 +135,12 @@ Variant deletion should be restricted while cart rows reference the variant. Del
 
 ## 5. Cart Schema Design Options
 
-### Option A: `carts` as line items
+### Option A: `cart_items` as line items
 
 Each row is one selected product variant in one customer's cart:
 
 ```text
-carts
+cart_items
 - id
 - customer_id
 - product_variant_id
@@ -159,7 +159,7 @@ Benefits:
 
 Tradeoffs:
 
-- table name `carts` represents cart lines rather than a cart header
+- table name `cart_items` clearly represents cart lines
 - adding guest carts or abandoned cart lifecycle later may require a separate cart header or migration
 - cannot store cart-wide fields such as status, currency, or expiration cleanly
 
@@ -192,7 +192,7 @@ Benefits:
 
 - more explicit domain model
 - better for guest carts, cart status, expiration, merge behavior, and cart-to-order conversion
-- avoids overloading `carts` as line items
+- supports cart-wide status and lifecycle fields directly
 
 Tradeoffs:
 
@@ -202,11 +202,11 @@ Tradeoffs:
 
 ### Recommendation
 
-For the first implementation, use Option A: a single `carts` table where each row is a customer's cart line item.
+For the first implementation, use Option A: a single `cart_items` table where each row is a customer's cart line item.
 
-Defer a separate `cart_items` table until the app needs guest carts, cart headers, abandoned cart tracking, cart status, or checkout lifecycle state.
+Defer a separate `carts` header table until the app needs guest carts, cart headers, abandoned cart tracking, cart status, or checkout lifecycle state.
 
-## 6. Proposed `carts` Table
+## 6. Proposed `cart_items` Table
 
 Recommended first fields:
 
@@ -222,7 +222,7 @@ updated_at
 Recommended first table meaning:
 
 ```text
-carts = active cart line items
+cart_items = active cart line items
 ```
 
 Each customer/product variant pair should have at most one row. Updating quantity should update the existing row.
@@ -248,7 +248,7 @@ Each customer/product variant pair should have at most one row. Updating quantit
 Recommended relationship:
 
 ```text
-carts.customer_id -> users.id
+cart_items.customer_id -> users.id
 ```
 
 Use `customer_id` in the cart schema while documenting that it references the existing `users` table.
@@ -309,8 +309,8 @@ Recommended constraints:
 Recommended foreign keys:
 
 ```text
-carts.customer_id -> users.id
-carts.product_variant_id -> product_variants.id
+cart_items.customer_id -> users.id
+cart_items.product_variant_id -> product_variants.id
 ```
 
 Recommended delete behavior:
@@ -321,9 +321,9 @@ Recommended delete behavior:
 Recommended indexes:
 
 ```elixir
-create index(:carts, [:customer_id])
-create index(:carts, [:product_variant_id])
-create unique_index(:carts, [:customer_id, :product_variant_id])
+create index(:cart_items, [:customer_id])
+create index(:cart_items, [:product_variant_id])
+create unique_index(:cart_items, [:customer_id, :product_variant_id])
 ```
 
 The unique index on `customer_id, product_variant_id` prevents duplicate cart rows for the same customer's same selected variant. Instead of inserting duplicates, the cart context should update the existing row quantity.
@@ -331,7 +331,7 @@ The unique index on `customer_id, product_variant_id` prevents duplicate cart ro
 Recommended check constraint:
 
 ```elixir
-create constraint(:carts, :quantity_positive, check: "quantity > 0")
+create constraint(:cart_items, :quantity_positive, check: "quantity > 0")
 ```
 
 Rejected alternative:
@@ -353,7 +353,7 @@ customer_id + product_variant_id
 Documentation-only example:
 
 ```elixir
-schema "carts" do
+schema "cart_items" do
   belongs_to :customer, CaHeoShop.Accounts.User, foreign_key: :customer_id
   belongs_to :product_variant, CaHeoShop.ProductVariants.ProductVariant
 
@@ -366,8 +366,8 @@ end
 Recommended naming:
 
 ```text
-Table name: carts
-Schema module: CaHeoShop.Carts.Cart
+Table name: cart_items
+Schema module: CaHeoShop.Carts.CartItem
 Context module: CaHeoShop.Carts
 Relationship fields:
   customer_id
@@ -381,7 +381,7 @@ The context should own cart row CRUD and quantity update behavior when implement
 Documentation-only example:
 
 ```elixir
-create table(:carts) do
+create table(:cart_items) do
   add :customer_id, references(:users, on_delete: :delete_all), null: false
   add :product_variant_id, references(:product_variants, on_delete: :restrict), null: false
   add :quantity, :integer, null: false, default: 1
@@ -389,11 +389,11 @@ create table(:carts) do
   timestamps(type: :utc_datetime)
 end
 
-create index(:carts, [:customer_id])
-create index(:carts, [:product_variant_id])
-create unique_index(:carts, [:customer_id, :product_variant_id])
+create index(:cart_items, [:customer_id])
+create index(:cart_items, [:product_variant_id])
+create unique_index(:cart_items, [:customer_id, :product_variant_id])
 
-create constraint(:carts, :quantity_positive, check: "quantity > 0")
+create constraint(:cart_items, :quantity_positive, check: "quantity > 0")
 ```
 
 Do not store both `product_id` and `product_variant_id` unless there is a clear denormalization reason. The selected variant already points back to its product.
@@ -402,7 +402,7 @@ Do not store both `product_id` and `product_variant_id` unless there is a clear 
 
 ### `status`
 
-Defer. A status field belongs better on a cart header model, not on line-item-only `carts`.
+Defer. A status field belongs better on a cart header model, not on line-item-only `cart_items`.
 
 ### `session_id`
 
@@ -410,11 +410,11 @@ Defer. Needed for guest carts, but guest carts are not part of the first impleme
 
 ### `cart_id`
 
-Defer. Needed only if the project introduces a cart header plus `cart_items`.
+Defer. Needed only if the project introduces a cart header table.
 
 ### `cart_item_id`
 
-Do not add. The proposed `carts` row already acts as the cart item.
+Do not add. The proposed `cart_items` row already acts as the cart item.
 
 ### `unit_price_snapshot`
 
@@ -442,10 +442,10 @@ Defer. Do not add a metadata blob without a concrete workflow.
 
 ## 13. Final Recommendation
 
-For the first implementation, create a simple `carts` table where each row is one active cart line item:
+For the first implementation, create a simple `cart_items` table where each row is one active cart line item:
 
 ```text
-carts
+cart_items
 - customer_id
 - product_variant_id
 - quantity
@@ -454,16 +454,16 @@ carts
 Recommended table and modules:
 
 ```text
-Table name: carts
-Schema module: CaHeoShop.Carts.Cart
+Table name: cart_items
+Schema module: CaHeoShop.Carts.CartItem
 Context module: CaHeoShop.Carts
 ```
 
 Recommended relationships:
 
 ```text
-carts.customer_id -> users.id
-carts.product_variant_id -> product_variants.id
+cart_items.customer_id -> users.id
+cart_items.product_variant_id -> product_variants.id
 ```
 
 Recommended constraints:

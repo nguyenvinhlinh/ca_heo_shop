@@ -44,7 +44,7 @@ Existing relevant research:
 
 - `research/010_table-collections.md`
 - `research/011-table-products-product-images.md`
-- `research/012-table-carts.md`
+- `research/012-table-cart-items.md`
 
 ## 3. Checkout Requirements
 

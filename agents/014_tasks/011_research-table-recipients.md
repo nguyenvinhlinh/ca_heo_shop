@@ -53,7 +53,7 @@ tasks/010-research-table-sale-orders.md
 Also read these research files if they exist:
 
 ```text
-research/012-table-carts.md
+research/012-table-cart-items.md
 research/013_table-sale-orders.md
 ```
 
