@@ -46,6 +46,7 @@ agents/011_architecture.md
 agents/012_database-model.md
 agents/013_ui-system.md
 agents/014_task-workflow.md
+research/004-commerce-order-flow.md
 tasks/007-research-current-database-model.md
 tasks/010-research-table-sale-orders.md
 ```
@@ -55,6 +56,15 @@ Also read these research files if they exist:
 ```text
 research/012-table-cart-items.md
 research/013_table-sale-orders.md
+```
+
+Use `research/004-commerce-order-flow.md` as the primary source for recipient checkout behavior:
+
+```text
+recipient information is snapshotted into sale_orders at checkout
+saved recipient records may change later
+historical orders must preserve checkout-time delivery data
+guest checkout is deferred
 ```
 
 Inspect current code related to:

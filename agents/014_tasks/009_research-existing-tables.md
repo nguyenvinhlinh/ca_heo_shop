@@ -48,6 +48,7 @@ agents/001_phoenix-agent.md
 agents/010_business-context.md
 agents/011_architecture.md
 agents/014_task-workflow.md
+research/004-commerce-order-flow.md
 ```
 
 Also inspect:
@@ -59,6 +60,8 @@ lib/**/*user*
 ```
 
 The goal is to understand what the existing authentication system created.
+
+Use `research/004-commerce-order-flow.md` only as background for why commerce tables are not implemented yet. This task must document the current database state, not proposed commerce tables.
 
 ---
 

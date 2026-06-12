@@ -46,6 +46,7 @@ agents/011_architecture.md
 agents/012_database-model.md
 agents/013_ui-system.md
 agents/014_task-workflow.md
+research/004-commerce-order-flow.md
 tasks/004-build-storefront-skeleton.md
 tasks/007-research-current-database-model.md
 ```
@@ -55,6 +56,15 @@ Also read these research files if they exist:
 ```text
 research/010_table-collections.md
 research/011-table-products-product-images.md
+```
+
+Use `research/004-commerce-order-flow.md` as the primary source for cart procedure requirements:
+
+```text
+cart_items are active selected variant rows
+cart_items reference customer_id, product_variant_id, quantity
+cart items are cleared only after sale order, sale order items, fulfillment procedure, and payment procedure are created successfully
+cart conversion stages are not persistent cart statuses
 ```
 
 Inspect current code related to:

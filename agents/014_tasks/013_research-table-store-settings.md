@@ -47,8 +47,18 @@ agents/011_architecture.md
 agents/012_database-model.md
 agents/013_ui-system.md
 agents/014_task-workflow.md
+research/004-commerce-order-flow.md
 tasks/005-admin-skeleton.md
 tasks/005-02-enhance-admin-settings.md
+```
+
+Use `research/004-commerce-order-flow.md` as the primary source for checkout/payment display boundaries:
+
+```text
+store_settings may provide payment and shipping instructions
+payment_procedures own payment workflow status
+financial_transactions own actual money movement records
+store_settings must not store order-specific payment state
 ```
 
 Also inspect current code related to:
@@ -115,8 +125,7 @@ contact phone
 store address
 shipping note
 payment note
-bank transfer information
-QR payment image filename
+general payment instructions
 announcement text
 maintenance mode flag
 ```
@@ -219,14 +228,16 @@ Research whether store settings may be used for:
 
 * Shipping note
 * Payment note
-* Bank transfer instruction
-* QR payment image filename
+* General bank transfer instruction text
+* General QR payment instruction text
 * COD availability
 * Customer support phone number
 
 Do not implement payment logic in this task.
 
-Only document schema implications.
+Only document schema implications for reusable display copy.
+
+Do not store order-specific payment status, payment confirmation, payment reference, refund status, or financial ledger data in `store_settings`. Those belong to future `payment_procedures` and `financial_transactions`.
 
 ---
 
@@ -274,13 +285,22 @@ Evaluate:
 
 ```text
 payment_note
+```
+
+The project may use QR code, cash, COD, or manual bank transfer later.
+
+Detailed bank account fields and QR payment image storage should be deferred unless the current admin settings UI explicitly needs structured payment display fields.
+
+Deferred examples:
+
+```text
 bank_account_name
 bank_account_number
 bank_name
 qr_payment_image_filename
+cod_enabled
+cash_enabled
 ```
-
-The project may use QR code or manual bank transfer later.
 
 Do not implement payment confirmation logic in this task.
 
@@ -363,6 +383,8 @@ bank_account_name
 bank_account_number
 bank_name
 qr_payment_image_filename
+cod_enabled
+cash_enabled
 default_shipping_fee
 free_shipping_threshold
 announcement_text

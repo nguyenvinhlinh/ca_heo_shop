@@ -1,4 +1,4 @@
-# Task 013: Consolidate Database Model Documentation
+# Task 020: Consolidate Database Model Documentation
 
 ## Objective
 
@@ -48,6 +48,7 @@ agents/011_architecture.md
 agents/012_database-model.md
 agents/013_ui-system.md
 agents/014_task-workflow.md
+research/004-commerce-order-flow.md
 ```
 
 Also inspect the task files related to database research.
@@ -65,9 +66,15 @@ collections
 products
 product_variants
 product_images
-carts
+cart_items
 sale_orders
 sale_order_items
+fulfillment_procedures
+payment_procedures
+return_procedures
+return_items
+financial_transactions
+procedure_status_logs
 recipients
 store_settings
 current database model
@@ -100,6 +107,13 @@ research/012-table-cart-items.md
 research/013_table-sale-orders.md
 research/014_table-recipients.md
 research/015_table-store-settings.md
+research/016_table-fulfillment-procedures.md
+research/017_table-payment-procedures.md
+research/018_table-return-procedures-return-items.md
+research/019_table-financial-transactions.md
+research/020_table-procedure-status-logs.md
+research/021_table-inventory-movements.md
+research/004-commerce-order-flow.md
 ```
 
 Some files may not exist depending on completed tasks.
@@ -235,7 +249,7 @@ Example wording:
 
 ```text
 The current database only contains authentication-related tables.
-Business tables such as collections, products, carts, sale orders, recipients, and store settings are research proposals unless implemented later.
+Business tables such as collections, products, cart items, sale orders, procedure tables, recipients, and store settings are research proposals unless implemented later.
 ```
 
 Only state this if it matches the actual codebase after inspection.
@@ -282,9 +296,15 @@ collections
 products
 product_variants
 product_images
-carts
+cart_items
 sale_orders
 sale_order_items
+fulfillment_procedures
+payment_procedures
+return_procedures
+return_items
+financial_transactions
+procedure_status_logs
 recipients
 store_settings
 ```
@@ -370,7 +390,7 @@ Recipient belongs to User/Customer
 
 Important:
 
-If research recommends `product_variant_id` for carts or sale order items, document that clearly.
+Document that cart items and sale order items should use `product_variant_id` as the selected sellable item reference.
 
 If research is still undecided, mark it as an open question.
 
@@ -408,18 +428,18 @@ Summarize cart research.
 Expected table:
 
 ```text
-carts
+cart_items
 ```
 
 Document:
 
 * Customer/user relationship
-* Product or variant relationship
+* Product variant relationship
 * Quantity
 * Whether `customer_id` should reference `users.id`
-* Whether cart rows should reference `product_id` or `product_variant_id`
+* Why cart rows should reference `product_variant_id`
 
-If the product variant research affects the cart model, mention that the database model should prefer the sellable item reference.
+`research/004-commerce-order-flow.md` recommends `cart_items.customer_id`, `cart_items.product_variant_id`, and `cart_items.quantity`. If a future cart header table is discussed, mark it as deferred.
 
 ---
 
@@ -432,21 +452,31 @@ Expected tables:
 ```text
 sale_orders
 sale_order_items
+fulfillment_procedures
+payment_procedures
+return_procedures
+return_items
+financial_transactions
+procedure_status_logs
 ```
 
 Document:
 
-* Sale order header
+* Sale order header and order snapshot
 * Sale order item lines
 * Recipient snapshot fields
-* Status fields
-* Payment status
-* Fulfillment status
+* Fulfillment procedure status
+* Payment procedure status
+* Return procedure status
+* Financial transaction ledger concept
+* Procedure status audit logs
 * Money fields stored as integer VND
 * Product or variant snapshot strategy
 * Cart-to-order conversion concept
 
 Important:
+
+`research/004-commerce-order-flow.md` recommends `sale_orders` should not be the source of truth for payment, fulfillment, return, financial ledger, or procedure audit status. If cached status fields are documented on `sale_orders`, clearly mark the related procedure table as the source of truth.
 
 If research recommends snapshotting product or variant name and price into `sale_order_items`, document that clearly.
 
@@ -519,11 +549,18 @@ Possible deferred tables:
 
 ```text
 inventory_movements
-payments
-sale_order_status_logs
+status_logs
 product_bundle_items
 custom_orders
 media_assets
+```
+
+If older task files or research mention `payments`, `payment_transactions`, `outbound_payments`, `sale_order_status_logs`, `payment_status_logs`, or `return_status_logs`, reconcile them against `research/004-commerce-order-flow.md`:
+
+```text
+payment_procedures = order-related payment workflow
+financial_transactions = actual money movement ledger
+procedure_status_logs = audit history for procedure status changes
 ```
 
 Only include these if they are mentioned in existing research or task files.
@@ -545,6 +582,7 @@ Example:
 - research/013_table-sale-orders.md
 - research/014_table-recipients.md
 - research/015_table-store-settings.md
+- research/004-commerce-order-flow.md
 ```
 
 If a file is missing, either omit it or mention it under open questions.
@@ -558,8 +596,9 @@ List unresolved database decisions.
 Possible examples:
 
 ```text
-Should carts reference product_id or product_variant_id?
-Should sale_order_items reference product_id or product_variant_id?
+Should a cart header table be deferred until guest carts or abandoned cart workflows exist?
+Should sale_order_items keep only product_variant_id or also cache product_id for reporting?
+Should sale_orders keep cached current procedure statuses or rely only on procedure tables?
 Should store_settings use a single-row table or key-value table?
 Should recipients table use one text address field or structured address fields?
 Should guest checkout be supported later?
@@ -599,7 +638,7 @@ The task is complete when:
 * Research outputs from completed database research tasks are summarized.
 * Proposed business tables are listed clearly.
 * Relationships between major tables are summarized.
-* Product variant impact on carts and sale order items is documented.
+* Product variant impact on cart items and sale order items is documented.
 * Store settings recommendation is summarized.
 * Research references are included.
 * Open questions are documented.

@@ -53,6 +53,7 @@ agents/011_architecture.md
 agents/012_database-model.md
 agents/013_ui-system.md
 agents/014_task-workflow.md
+research/004-commerce-order-flow.md
 tasks/004-build-storefront-skeleton.md
 tasks/005-admin-skeleton.md
 tasks/007-research-current-database-model.md
@@ -65,6 +66,18 @@ Also read these research files if they exist:
 research/010_table-collections.md
 research/011-table-products-product-images.md
 research/012-table-cart-items.md
+```
+
+Use `research/004-commerce-order-flow.md` as the primary source for order workflow boundaries:
+
+```text
+sale_orders = order header and order snapshot
+sale_order_items = purchased item snapshots
+fulfillment_procedures = fulfillment workflow and status
+payment_procedures = payment workflow and status
+return_procedures = return workflow and status
+financial_transactions = actual money movement ledger
+procedure_status_logs = audit history for procedure status changes
 ```
 
 Inspect current code related to:
@@ -120,13 +133,17 @@ The `sale_orders` table represents the order header.
 
 The `sale_order_items` table represents product line items inside an order.
 
+This task should not fully design `fulfillment_procedures`, `payment_procedures`, `return_procedures`, `return_items`, `financial_transactions`, or `procedure_status_logs`. Those are separate procedure/ledger/audit research tasks.
+
 Expected relationship:
 
 ```text
 SaleOrder has many SaleOrderItems
 SaleOrderItem belongs to SaleOrder
-SaleOrderItem belongs to Product
+SaleOrderItem belongs to ProductVariant
 ```
+
+The commerce order flow research separates order header data from procedure workflow state. This task should research `sale_orders` and `sale_order_items` only, while documenting how they relate to future procedure tables.
 
 ---
 
@@ -138,12 +155,13 @@ It should support:
 
 * Customer order history
 * Admin order management
-* Order status tracking
-* Payment status tracking
 * Recipient information
 * Delivery/shipping address
 * Total amount summary
 * Relationship with ordered products through `sale_order_items`
+* Relationship to future fulfillment and payment procedures
+
+It should not be the source of truth for fulfillment, payment, return, financial ledger, or procedure audit status.
 
 A `sale_order_item` represents one product line inside a sale order.
 
@@ -191,18 +209,22 @@ Expected basic relationship fields:
 
 ```text
 sale_order_id
-product_id
+product_variant_id
 quantity
 ```
 
-Also research whether price and product snapshots are needed.
+Also research whether price, product, and variant snapshots are needed.
 
 Possible fields to evaluate:
 
 ```text
 product_name_snapshot
+product_slug_snapshot
+variant_name_snapshot
 unit_price_snapshot
+production_cost_snapshot
 line_total_amount
+image_filename_snapshot
 ```
 
 These are important because product name and price may change after the order is created.
@@ -354,9 +376,28 @@ For the first implementation, prefer a simple address model unless the current U
 
 ---
 
-### Status Fields
+### Procedure Relationship and Cached Status Fields
 
-Evaluate:
+`research/004-commerce-order-flow.md` recommends that workflow state lives in separate procedure tables:
+
+```text
+fulfillment_procedures.status
+payment_procedures.status
+return_procedures.status
+```
+
+For this task, evaluate whether `sale_orders` should:
+
+```text
+store no workflow status fields
+store only optional cached current_fulfillment_status
+store only optional cached current_payment_status
+store only optional cached current_return_status
+```
+
+If cached fields are recommended, document that procedure tables remain the source of truth.
+
+Do not make these first-version `sale_orders` source-of-truth fields:
 
 ```text
 status
@@ -364,39 +405,36 @@ payment_status
 fulfillment_status
 ```
 
-Possible order status values to consider:
+Procedure statuses from the commerce flow should be documented as related/deferred tables:
 
 ```text
-pending
+fulfillment_procedures.status:
+unfulfilled
 confirmed
-processing
+preparing
+ready_to_ship
+shipping
 completed
 cancelled
-```
 
-Possible payment status values to consider:
-
-```text
+payment_procedures.status for inbound payment:
 unpaid
-pending
+pending_confirmation
 paid
 failed
+cancelled
 refunded
-```
 
-Possible fulfillment status values to consider:
-
-```text
-unfulfilled
-preparing
-shipped
-delivered
+payment_procedures.status for outbound payment:
+pending
+approved
+processing
+paid
+failed
 cancelled
 ```
 
-The research document should recommend a simple first-version status model.
-
-Do not over-design a full state machine unless clearly needed.
+Do not over-design full procedure tables in this task unless the task scope is explicitly expanded.
 
 ---
 
@@ -447,14 +485,13 @@ Recommend whether these fields should exist in `sale_orders`.
 
 ### Payment Fields
 
-Evaluate whether sale orders should store simple payment information.
+Evaluate whether sale orders should store simple payment display information.
 
 Fields to evaluate:
 
 ```text
 payment_method
 payment_reference
-paid_at
 ```
 
 Possible payment method values:
@@ -466,7 +503,9 @@ manual
 qr_transfer
 ```
 
-The project may use QR code or manual bank transfer later, but do not implement payment logic in this task.
+The project may use QR code, cash, COD, or manual bank transfer later, but do not implement payment logic in this task.
+
+Payment workflow state belongs to future `payment_procedures`. Actual money movement belongs to future `financial_transactions`.
 
 Only document the schema implications.
 
@@ -499,7 +538,7 @@ At minimum, evaluate:
 ```text
 id
 sale_order_id
-product_id
+product_variant_id
 quantity
 inserted_at
 updated_at
@@ -510,6 +549,7 @@ Also evaluate:
 ```text
 product_name_snapshot
 product_slug_snapshot
+variant_name_snapshot
 unit_price_snapshot
 production_cost_snapshot
 line_total_amount
@@ -519,27 +559,29 @@ image_filename_snapshot
 The research document should explain:
 
 * Why order items should snapshot product name and price
+* Why order items should reference the selected product variant
+* Whether variant name should be snapshotted
 * Whether production cost should be snapshotted for profit reporting
-* Whether product image filename should be snapshotted or read from products
-* Whether product deletion should be restricted if order items exist
+* Whether product or variant image filename should be snapshotted
+* Whether product or variant deletion should be restricted if order items exist
 
 ---
 
 ## Relationship With Products
 
-Research how `sale_order_items` should relate to `products`.
+Research how `sale_order_items` should relate to product variants.
 
 Questions to answer:
 
-* Should `sale_order_items.product_id` reference `products.id`?
-* What happens if a product is deleted?
-* Should product name and price be copied into `sale_order_items`?
-* Should `sale_order_items` depend on current product price or snapshot the price at order time?
+* Should `sale_order_items.product_variant_id` reference `product_variants.id`?
+* What happens if a product or product variant is deleted?
+* Should product name, variant name, and price be copied into `sale_order_items`?
+* Should `sale_order_items` depend on current product/variant price or snapshot the price at order time?
 
 Recommended direction to evaluate:
 
 ```text
-Keep product_id as a reference.
+Keep product_variant_id as a reference.
 Snapshot name and price into sale_order_items.
 Do not depend only on current product data for historical orders.
 ```
@@ -558,13 +600,13 @@ At minimum, evaluate:
 id
 order_number
 customer_id
-status
-payment_status
-fulfillment_status
 subtotal_amount
 shipping_fee
 discount_amount
 total_amount
+customer_name_snapshot
+customer_email_snapshot
+customer_phone_snapshot
 recipient_fullname
 recipient_phone_number
 recipient_address
@@ -586,11 +628,15 @@ At minimum, evaluate:
 ```text
 id
 sale_order_id
-product_id
+product_variant_id
 product_name_snapshot
+product_slug_snapshot
+variant_name_snapshot
 unit_price_snapshot
+production_cost_snapshot
 quantity
 line_total_amount
+image_filename_snapshot
 inserted_at
 updated_at
 ```
@@ -618,9 +664,6 @@ Evaluate:
 ```text
 unique index on order_number
 index on customer_id
-index on status
-index on payment_status
-index on fulfillment_status
 index on inserted_at
 foreign key from sale_orders.customer_id to users.id
 not null constraints
@@ -633,9 +676,9 @@ Evaluate:
 
 ```text
 index on sale_order_id
-index on product_id
+index on product_variant_id
 foreign key from sale_order_items.sale_order_id to sale_orders.id
-foreign key from sale_order_items.product_id to products.id
+foreign key from sale_order_items.product_variant_id to product_variants.id
 not null constraints
 quantity positive constraint
 money amount constraints
@@ -667,7 +710,7 @@ CaHeoShop.Sales.SaleOrderItem
 CaHeoShop.Sales
 sale_orders.customer_id
 sale_order_items.sale_order_id
-sale_order_items.product_id
+sale_order_items.product_variant_id
 ```
 
 Also evaluate whether the context should be:
@@ -698,7 +741,7 @@ The file `research/013_table-sale-orders.md` should contain:
 8. Proposed `sale_orders` Table
 9. Proposed `sale_order_items` Table
 10. Field-by-Field Explanation
-11. Status Model Recommendation
+11. Procedure Relationship Recommendation
 12. Money Field Recommendation
 13. Recipient Information Recommendation
 14. Product Snapshot Recommendation
@@ -724,14 +767,14 @@ create table(:sale_orders) do
   add :order_number, :string, null: false
   add :customer_id, references(:users, on_delete: :restrict), null: false
 
-  add :status, :string, null: false, default: "pending"
-  add :payment_status, :string, null: false, default: "unpaid"
-  add :fulfillment_status, :string, null: false, default: "unfulfilled"
-
   add :subtotal_amount, :integer, null: false, default: 0
   add :shipping_fee, :integer, null: false, default: 0
   add :discount_amount, :integer, null: false, default: 0
   add :total_amount, :integer, null: false, default: 0
+
+  add :customer_name_snapshot, :string, null: false
+  add :customer_email_snapshot, :string, null: false
+  add :customer_phone_snapshot, :string, null: false
 
   add :recipient_fullname, :string, null: false
   add :recipient_phone_number, :string, null: false
@@ -752,27 +795,28 @@ end
 
 create unique_index(:sale_orders, [:order_number])
 create index(:sale_orders, [:customer_id])
-create index(:sale_orders, [:status])
-create index(:sale_orders, [:payment_status])
-create index(:sale_orders, [:fulfillment_status])
 create index(:sale_orders, [:inserted_at])
 ```
 
 ```elixir
 create table(:sale_order_items) do
   add :sale_order_id, references(:sale_orders, on_delete: :delete_all), null: false
-  add :product_id, references(:products, on_delete: :restrict), null: false
+  add :product_variant_id, references(:product_variants, on_delete: :restrict), null: false
 
   add :product_name_snapshot, :string, null: false
+  add :product_slug_snapshot, :string
+  add :variant_name_snapshot, :string, null: false
   add :unit_price_snapshot, :integer, null: false
+  add :production_cost_snapshot, :integer, null: false, default: 0
   add :quantity, :integer, null: false
   add :line_total_amount, :integer, null: false
+  add :image_filename_snapshot, :string
 
   timestamps(type: :utc_datetime)
 end
 
 create index(:sale_order_items, [:sale_order_id])
-create index(:sale_order_items, [:product_id])
+create index(:sale_order_items, [:product_variant_id])
 ```
 
 These samples should be treated as proposals, not implementation.
@@ -810,10 +854,11 @@ The task is complete when:
 * The customer/user relationship is clearly explained.
 * The cart-to-order conversion is clearly explained.
 * The relationship between `sale_orders` and `sale_order_items` is clearly explained.
-* The relationship between `sale_order_items` and products is clearly explained.
+* The relationship between `sale_order_items` and product variants is clearly explained.
+* The relationship between sale orders and future fulfillment/payment/return procedures is clearly explained.
 * Required fields are identified.
 * Optional or deferred fields are separated from required fields.
-* Status fields are recommended.
+* Procedure status fields are separated from sale order header fields.
 * Money fields are recommended.
 * Product snapshot fields are evaluated.
 * Indexes and constraints are recommended.

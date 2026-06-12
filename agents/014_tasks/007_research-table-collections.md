@@ -39,6 +39,7 @@ agents/010_business-context.md
 agents/011_architecture.md
 agents/013_ui-system.md
 agents/014_task-workflow.md
+research/004-commerce-order-flow.md
 tasks/004-build-storefront-skeleton.md
 tasks/005-admin-skeleton.md
 tasks/005-01-improve-admin-skeleton-ui.md
@@ -58,6 +59,8 @@ Inspect current code related to:
 ```
 
 If some routes or pages do not exist yet, document that clearly.
+
+Use the commerce order flow research only as business context. Collections are catalog/navigation data and should not take on order, fulfillment, payment, return, inventory, or procedure status responsibilities.
 
 ---
 

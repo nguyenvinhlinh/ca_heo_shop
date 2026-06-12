@@ -49,6 +49,7 @@ agents/011_architecture.md
 agents/012_database-model.md
 agents/013_ui-system.md
 agents/014_task-workflow.md
+research/004-commerce-order-flow.md
 tasks/004-build-storefront-skeleton.md
 tasks/005-admin-skeleton.md
 tasks/005-01-improve-admin-skeleton-ui.md
@@ -66,6 +67,16 @@ Also read these research files if they exist:
 ```text
 research/012-table-cart-items.md
 research/013_table-sale-orders.md
+```
+
+Use `research/004-commerce-order-flow.md` as the primary source for commerce implications:
+
+```text
+the customer buys product_variant
+cart_items reference product_variant_id
+sale_order_items reference product_variant_id
+sale_order_items snapshot product, variant, price, cost, quantity, and image
+stock impact belongs to the commerce flow, not product browsing
 ```
 
 Inspect current code related to:
@@ -682,7 +693,7 @@ Recommend the simplest first implementation.
 
 ---
 
-### Relationship With Carts And Orders
+### Relationship With Cart Items And Orders
 
 If cart or sale order research exists, inspect:
 
@@ -691,21 +702,21 @@ research/012-table-cart-items.md
 research/013_table-sale-orders.md
 ```
 
-Research whether carts and sale order items should reference:
-
-```text
-product_id
-```
-
-or:
+Research and document why cart items and sale order items should reference:
 
 ```text
 product_variant_id
 ```
 
+Rejected as the only sellable reference:
+
+```text
+product_id
+```
+
 Important:
 
-If variants are sellable options, cart items and sale order items may need to reference `product_variant_id`.
+`research/004-commerce-order-flow.md` recommends that the customer buys a selected product variant. Cart items and sale order items should reference `product_variant_id` because variants can affect price, production cost, stock quantity, and image.
 
 The research document should clearly document this impact.
 
@@ -983,7 +994,7 @@ The task is complete when:
 * The document explains how variant image selection affects product detail UI.
 * The document explains fallback behavior when a variant image is missing.
 * The document keeps `product_images` as product-level gallery unless research clearly proves variant galleries are needed.
-* The document evaluates whether carts and sale order items should reference products or product variants.
+* The document explains why cart items and sale order items should reference product variants as the selected sellable item.
 * Required fields are identified.
 * Optional or deferred fields are separated from required fields.
 * Indexes and constraints are recommended.
