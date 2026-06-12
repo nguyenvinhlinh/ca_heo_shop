@@ -21,6 +21,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Inventory Value Placeholder"
     assert html =~ "Top Purchased Products"
     refute html =~ "Quick Actions"
+    refute html =~ "Search"
     assert html =~ "Recent Orders"
     assert html =~ "Product Overview"
     assert html =~ user.email
@@ -31,7 +32,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert html =~ "Products"
     assert html =~ "Create product"
-    assert html =~ "Search products"
+    refute html =~ "Search"
     assert html =~ "Cost"
     assert html =~ "Modular Desk Organizer"
   end
@@ -59,7 +60,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     {:ok, _view, html} = live(conn, ~p"/admin/orders")
 
     assert html =~ "Orders"
-    assert html =~ "Search orders"
+    refute html =~ "Search"
     assert html =~ "ORD-1024"
     assert html =~ "Pending"
   end
@@ -68,7 +69,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     {:ok, _view, html} = live(conn, ~p"/admin/customers")
 
     assert html =~ "Customers"
-    assert html =~ "Search customers"
+    refute html =~ "Search"
     assert html =~ "Halo Nguyen"
     assert html =~ "090 000 0001"
   end
@@ -78,7 +79,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert html =~ "Collections"
     assert html =~ "Create collection"
-    assert html =~ "Search collections"
+    refute html =~ "Search"
     assert html =~ "Description"
     assert html =~ "3D Printed Products"
     assert html =~ "custom-orders"
@@ -107,10 +108,14 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     {:ok, _view, html} = live(conn, ~p"/admin/settings")
 
     assert html =~ "Settings"
-    assert html =~ "Store information"
+    refute html =~ "Search"
+    refute html =~ "Store information"
+    refute html =~ "Public-facing store identity"
+    refute html =~ "Store name"
+    refute html =~ "Tagline"
     assert html =~ "Contact information"
     assert html =~ "Shipping notes"
     assert html =~ "Payment notes"
-    assert html =~ "General preferences"
+    refute html =~ "General preferences"
   end
 end

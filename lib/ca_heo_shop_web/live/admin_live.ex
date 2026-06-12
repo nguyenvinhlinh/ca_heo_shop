@@ -209,9 +209,6 @@ defmodule CaHeoShopWeb.AdminLive do
         >
           <.icon name="hero-bars-3" class="size-5" />
         </label>
-        <button class="btn btn-ghost btn-sm hidden gap-2 md:inline-flex" type="button">
-          <.icon name="hero-magnifying-glass" class="size-4" /> Search
-        </button>
       </div>
       <div class="flex items-center gap-2">
         <button class="btn btn-square btn-ghost btn-sm" type="button" aria-label="Notifications">
@@ -403,7 +400,7 @@ defmodule CaHeoShopWeb.AdminLive do
 
     <section class="card mt-6 bg-base-100 shadow-sm">
       <div class="card-body p-0">
-        <.table_toolbar search="Search products" filter="Collection" />
+        <.table_toolbar filter="Collection" />
         <div class="overflow-auto">
           <table class="table">
             <thead>
@@ -466,7 +463,7 @@ defmodule CaHeoShopWeb.AdminLive do
 
     <section class="card mt-6 bg-base-100 shadow-sm">
       <div class="card-body p-0">
-        <.table_toolbar search="Search orders" filter="Status" />
+        <.table_toolbar filter="Status" />
         <.orders_table orders={@orders} />
         <.pagination count={length(@orders)} label="orders" />
       </div>
@@ -517,7 +514,7 @@ defmodule CaHeoShopWeb.AdminLive do
 
     <section class="card mt-6 bg-base-100 shadow-sm">
       <div class="card-body p-0">
-        <.table_toolbar search="Search customers" filter="Segment" />
+        <.table_toolbar filter="Segment" />
         <div class="overflow-auto">
           <table class="table">
             <thead>
@@ -578,7 +575,7 @@ defmodule CaHeoShopWeb.AdminLive do
 
     <section class="card mt-6 bg-base-100 shadow-sm">
       <div class="card-body p-0">
-        <.table_toolbar search="Search collections" filter="Status" />
+        <.table_toolbar filter="Status" />
         <div class="overflow-auto">
           <table class="table">
             <thead>
@@ -849,11 +846,6 @@ defmodule CaHeoShopWeb.AdminLive do
 
     <section class="card card-border mt-6 bg-base-100">
       <div class="card-body gap-8">
-        <.settings_section title="Store information" description="Public-facing store identity.">
-          <.input name="store_name" label="Store name" value={@settings.store_name} />
-          <.input name="tagline" label="Tagline" value={@settings.tagline} />
-        </.settings_section>
-
         <.settings_section
           title="Contact information"
           description="Customer support contact placeholders."
@@ -883,26 +875,6 @@ defmodule CaHeoShopWeb.AdminLive do
           />
         </.settings_section>
 
-        <.settings_section
-          title="General preferences"
-          description="Simple toggles for future preferences."
-        >
-          <label class="flex cursor-pointer items-center justify-between rounded-box border border-base-300 p-4">
-            <span>
-              <span class="font-medium">Accept custom orders</span>
-              <span class="block text-sm text-base-content/60">Static toggle only.</span>
-            </span>
-            <input type="checkbox" class="toggle toggle-primary" checked />
-          </label>
-          <label class="flex cursor-pointer items-center justify-between rounded-box border border-base-300 p-4">
-            <span>
-              <span class="font-medium">Low stock reminders</span>
-              <span class="block text-sm text-base-content/60">Static toggle only.</span>
-            </span>
-            <input type="checkbox" class="toggle" checked />
-          </label>
-        </.settings_section>
-
         <div class="flex justify-end gap-2 border-t border-base-300 pt-6">
           <button class="btn btn-ghost" type="button">Cancel</button>
           <button class="btn btn-primary" type="button">Save placeholder</button>
@@ -930,17 +902,12 @@ defmodule CaHeoShopWeb.AdminLive do
     """
   end
 
-  attr :search, :string, required: true
   attr :filter, :string, required: true
 
   def table_toolbar(assigns) do
     ~H"""
     <div class="flex flex-col gap-3 px-5 pt-5 md:flex-row md:items-center md:justify-between">
       <div class="flex flex-col gap-3 sm:flex-row">
-        <label class="input input-sm input-bordered flex w-full items-center gap-2 sm:w-72">
-          <.icon name="hero-magnifying-glass" class="size-4 opacity-60" />
-          <input type="search" class="grow" placeholder={@search} />
-        </label>
         <select class="select select-bordered select-sm w-full sm:w-40">
           <option>{@filter}</option>
           <option>All</option>
