@@ -212,43 +212,39 @@ Use name_en as the secondary or future English display name.
 
 ### Product Description
 
-Each product must have a product description.
+Each product must have product descriptions.
 
-The admin should be able to enter Markdown content to introduce and explain the product.
-
-Required field to research:
+Required fields to research:
 
 ```text
-description_markdown
+description_vi
+description_en
 ```
 
 Purpose:
 
 * Product detail page
-* Long-form product introduction
+* Product introduction
 * Admin-managed product content
+* Bilingual product content
 
 The research document should evaluate whether product description should be:
 
 ```text
 Option A:
-description_markdown
+description_vi and description_en
 
 Option B:
-description_markdown_vi and description_markdown_en
+description as primary, plus description_vi and description_en
 
 Option C:
-short_description plus description_markdown
+short_description plus description_vi and description_en
 
 Option D:
 translation table later
 ```
 
 For the first implementation, recommend the simplest approach that still supports the current storefront.
-
-The document should also mention that Markdown rendering requires safe HTML handling in future implementation.
-
-Do not implement Markdown rendering in this task.
 
 ---
 
@@ -735,7 +731,8 @@ collection_id
 slug
 name_vi
 name_en
-description_markdown
+description_vi
+description_en
 inserted_at
 updated_at
 ```
@@ -781,8 +778,9 @@ status
 is_visible
 sku
 short_description
-description_markdown_vi
-description_markdown_en
+description
+description_vi
+description_en
 published_at
 meta_title
 meta_description
@@ -834,7 +832,7 @@ Recommend final naming for:
 ```text
 Table names
 Schema modules
-Context module
+Context modules
 Route names
 Relationship fields
 ```
@@ -846,10 +844,12 @@ products
 product_variants
 product_images
 
-CaHeoShop.Catalog.Product
-CaHeoShop.Catalog.ProductVariant
-CaHeoShop.Catalog.ProductImage
-CaHeoShop.Catalog
+CaHeoShop.Products.Product
+CaHeoShop.ProductVariants.ProductVariant
+CaHeoShop.ProductImages.ProductImage
+CaHeoShop.Products
+CaHeoShop.ProductVariants
+CaHeoShop.ProductImages
 
 products.collection_id
 product_variants.product_id
@@ -901,7 +901,8 @@ create table(:products) do
   add :slug, :string, null: false
   add :name_vi, :string, null: false
   add :name_en, :string
-  add :description_markdown, :text
+  add :description_vi, :text
+  add :description_en, :text
 
   timestamps(type: :utc_datetime)
 end
