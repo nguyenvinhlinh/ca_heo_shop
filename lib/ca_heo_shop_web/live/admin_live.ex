@@ -2,15 +2,23 @@ defmodule CaHeoShopWeb.AdminLive do
   use CaHeoShopWeb, :live_view
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
+    products = mock_products()
+    collections = mock_collections()
+    selected_product = find_by_slug(products, params["slug"]) || blank_product()
+    selected_collection = find_by_slug(collections, params["slug"]) || blank_collection()
+
     socket =
       socket
       |> assign(:page_title, page_title(socket.assigns.live_action))
       |> assign(:metrics, mock_metrics())
-      |> assign(:products, mock_products())
+      |> assign(:products, products)
       |> assign(:orders, mock_orders())
       |> assign(:customers, mock_customers())
-      |> assign(:collections, mock_collections())
+      |> assign(:collections, collections)
+      |> assign(:selected_product, selected_product)
+      |> assign(:selected_collection, selected_collection)
+      |> assign(:top_purchased_products, mock_top_purchased_products())
       |> assign(:settings, mock_settings())
 
     {:ok, socket}
@@ -23,15 +31,40 @@ defmodule CaHeoShopWeb.AdminLive do
       <.admin_shell current_scope={@current_scope} active={@live_action}>
         <%= case @live_action do %>
           <% :dashboard -> %>
-            <.dashboard_page metrics={@metrics} products={@products} orders={@orders} />
+            <.dashboard_page
+              metrics={@metrics}
+              products={@products}
+              orders={@orders}
+              top_purchased_products={@top_purchased_products}
+            />
           <% :products -> %>
             <.products_page products={@products} />
+          <% :product_new -> %>
+            <.product_form_page
+              product={@selected_product}
+              collections={@collections}
+              mode={:new}
+            />
+          <% :product_edit -> %>
+            <.product_form_page
+              product={@selected_product}
+              collections={@collections}
+              mode={:edit}
+            />
+          <% :product_delete -> %>
+            <.delete_confirmation_page resource={@selected_product} resource_type={:product} />
           <% :orders -> %>
             <.orders_page orders={@orders} />
           <% :customers -> %>
             <.customers_page customers={@customers} />
           <% :collections -> %>
             <.collections_page collections={@collections} />
+          <% :collection_new -> %>
+            <.collection_form_page collection={@selected_collection} mode={:new} />
+          <% :collection_edit -> %>
+            <.collection_form_page collection={@selected_collection} mode={:edit} />
+          <% :collection_delete -> %>
+            <.delete_confirmation_page resource={@selected_collection} resource_type={:collection} />
           <% :settings -> %>
             <.settings_page settings={@settings} />
         <% end %>
@@ -88,7 +121,11 @@ defmodule CaHeoShopWeb.AdminLive do
         </li>
         <li class="menu-title mt-3">Ecommerce</li>
         <li>
-          <.admin_nav_link href={~p"/admin/products"} active={@active == :products} icon="hero-cube">
+          <.admin_nav_link
+            href={~p"/admin/products"}
+            active={product_action?(@active)}
+            icon="hero-cube"
+          >
             Products
           </.admin_nav_link>
         </li>
@@ -113,7 +150,7 @@ defmodule CaHeoShopWeb.AdminLive do
         <li>
           <.admin_nav_link
             href={~p"/admin/collections"}
-            active={@active == :collections}
+            active={collection_action?(@active)}
             icon="hero-tag"
           >
             Collections
@@ -228,6 +265,7 @@ defmodule CaHeoShopWeb.AdminLive do
   attr :metrics, :list, required: true
   attr :products, :list, required: true
   attr :orders, :list, required: true
+  attr :top_purchased_products, :list, required: true
 
   def dashboard_page(assigns) do
     ~H"""
@@ -275,17 +313,23 @@ defmodule CaHeoShopWeb.AdminLive do
 
       <div class="card bg-base-100 shadow-sm xl:col-span-4">
         <div class="card-body">
-          <h2 class="card-title text-base">Quick Actions</h2>
-          <div class="mt-3 grid gap-2">
-            <.link navigate={~p"/admin/products"} class="btn btn-outline justify-start">
-              <.icon name="hero-cube" class="size-4" /> Review products
-            </.link>
-            <.link navigate={~p"/admin/orders"} class="btn btn-outline justify-start">
-              <.icon name="hero-clipboard-document-list" class="size-4" /> Review orders
-            </.link>
-            <.link navigate={~p"/admin/settings"} class="btn btn-outline justify-start">
-              <.icon name="hero-cog-6-tooth" class="size-4" /> Store settings
-            </.link>
+          <div>
+            <h2 class="card-title text-base">Top Purchased Products</h2>
+            <p class="text-sm text-base-content/60">Ranked mock purchase counts.</p>
+          </div>
+          <div class="mt-4 grid gap-4">
+            <div :for={product <- @top_purchased_products} class="space-y-1">
+              <div class="flex items-center justify-between gap-3 text-sm">
+                <span class="truncate font-medium">{product.name}</span>
+                <span class="text-base-content/60">{product.purchase_count} purchases</span>
+              </div>
+              <progress
+                class="progress progress-primary h-2 w-full"
+                value={product.purchase_count}
+                max={List.first(@top_purchased_products).purchase_count}
+              >
+              </progress>
+            </div>
           </div>
         </div>
       </div>
@@ -351,9 +395,9 @@ defmodule CaHeoShopWeb.AdminLive do
     ~H"""
     <.page_header title="Products" section="Ecommerce" description="Mock product management table.">
       <:actions>
-        <button class="btn btn-primary btn-sm" type="button">
+        <.link navigate={~p"/admin/products/new"} class="btn btn-primary btn-sm">
           <.icon name="hero-plus" class="size-4" /> Create product
-        </button>
+        </.link>
       </:actions>
     </.page_header>
 
@@ -368,6 +412,7 @@ defmodule CaHeoShopWeb.AdminLive do
                 <th>Product</th>
                 <th>Collection</th>
                 <th>Price</th>
+                <th>Cost</th>
                 <th>Status</th>
                 <th>Stock</th>
                 <th>Updated At</th>
@@ -388,11 +433,16 @@ defmodule CaHeoShopWeb.AdminLive do
                 </td>
                 <td>{product.collection}</td>
                 <td>{product.price}</td>
+                <td>{product.cost}</td>
                 <td><.status_badge status={product.status} /></td>
                 <td>{product.stock}</td>
                 <td>{product.updated_at}</td>
                 <td class="text-right">
-                  <.row_actions />
+                  <.row_actions
+                    view={~p"/products/#{product.slug}"}
+                    edit={~p"/admin/products/#{product.slug}/edit"}
+                    delete={~p"/admin/products/#{product.slug}/delete"}
+                  />
                 </td>
               </tr>
             </tbody>
@@ -520,29 +570,260 @@ defmodule CaHeoShopWeb.AdminLive do
       description="Mock collection structure for catalog planning."
     >
       <:actions>
-        <button class="btn btn-primary btn-sm" type="button">
+        <.link navigate={~p"/admin/collections/new"} class="btn btn-primary btn-sm">
           <.icon name="hero-plus" class="size-4" /> Create collection
-        </button>
+        </.link>
       </:actions>
     </.page_header>
 
-    <section class="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-      <div :for={collection <- @collections} class="card bg-base-100 shadow-sm">
+    <section class="card mt-6 bg-base-100 shadow-sm">
+      <div class="card-body p-0">
+        <.table_toolbar search="Search collections" filter="Status" />
+        <div class="overflow-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Description</th>
+                <th>Products</th>
+                <th>Status</th>
+                <th>Updated At</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={collection <- @collections} class="hover:bg-base-200/40">
+                <td>
+                  <div class="flex items-center gap-3">
+                    <img src={collection.image} alt="" class="size-10 rounded-box object-cover" />
+                    <div>
+                      <p class="font-medium">{collection.name}</p>
+                      <p class="text-xs text-base-content/60">/{collection.slug}</p>
+                    </div>
+                  </div>
+                </td>
+                <td>{collection.slug}</td>
+                <td class="max-w-sm text-base-content/60">{collection.description}</td>
+                <td>{collection.product_count}</td>
+                <td><.status_badge status={collection.status} /></td>
+                <td>{collection.updated_at}</td>
+                <td class="text-right">
+                  <.row_actions
+                    view={~p"/collections/#{collection.slug}"}
+                    edit={~p"/admin/collections/#{collection.slug}/edit"}
+                    delete={~p"/admin/collections/#{collection.slug}/delete"}
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <.pagination count={length(@collections)} label="collections" />
+      </div>
+    </section>
+    """
+  end
+
+  attr :product, :map, required: true
+  attr :collections, :list, required: true
+  attr :mode, :atom, required: true
+
+  def product_form_page(assigns) do
+    assigns =
+      assigns
+      |> assign(:title, if(assigns.mode == :new, do: "Create Product", else: "Edit Product"))
+      |> assign(
+        :primary_action,
+        if(assigns.mode == :new, do: "Create Product", else: "Save Changes")
+      )
+
+    ~H"""
+    <.page_header
+      title={@title}
+      section="Ecommerce"
+      description="Static product form for exploring admin workflows."
+    />
+
+    <section class="mt-6 grid gap-6 xl:grid-cols-[1fr_22rem]">
+      <div class="card bg-base-100 shadow-sm">
         <div class="card-body">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <h2 class="card-title text-base">{collection.name}</h2>
-              <p class="text-sm text-base-content/60">/{collection.slug}</p>
+          <h2 class="card-title text-base">Product Information</h2>
+          <div class="mt-4 grid gap-4 lg:grid-cols-2">
+            <.input name="product_name" label="Name" value={@product.name} />
+            <.input name="product_slug" label="Slug" value={@product.slug} />
+            <.input
+              name="product_description"
+              type="textarea"
+              label="Description"
+              value={@product.description}
+              class="textarea w-full lg:col-span-2"
+            />
+            <.input
+              name="product_collection"
+              type="select"
+              label="Collection"
+              value={@product.collection}
+              options={Enum.map(@collections, &{&1.name, &1.name})}
+            />
+            <.input
+              name="product_status"
+              type="select"
+              label="Status"
+              value={@product.status}
+              options={[
+                {"Available", "Available"},
+                {"Draft", "Draft"},
+                {"Low stock", "Low stock"},
+                {"Paused", "Paused"}
+              ]}
+            />
+            <.input name="product_price" label="Price" value={@product.price} />
+            <.input name="product_cost" label="Cost" value={@product.cost} />
+            <.input name="product_stock" type="number" label="Stock" value={@product.stock} />
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <.link navigate={~p"/admin/products"} class="btn btn-ghost">Cancel</.link>
+            <button class="btn btn-primary" type="button">{@primary_action}</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="card bg-base-100 shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title text-base">Image Placeholder</h2>
+          <div class="flex aspect-square items-center justify-center rounded-box border border-dashed border-base-300 bg-base-200">
+            <%= if @product.image do %>
+              <img src={@product.image} alt="" class="size-full rounded-box object-cover" />
+            <% else %>
+              <.icon name="hero-photo" class="size-10 text-base-content/40" />
+            <% end %>
+          </div>
+          <p class="text-sm text-base-content/60">
+            Upload behavior is intentionally not implemented in this mock UI.
+          </p>
+        </div>
+      </aside>
+    </section>
+    """
+  end
+
+  attr :collection, :map, required: true
+  attr :mode, :atom, required: true
+
+  def collection_form_page(assigns) do
+    assigns =
+      assigns
+      |> assign(
+        :title,
+        if(assigns.mode == :new, do: "Create Collection", else: "Edit Collection")
+      )
+      |> assign(
+        :primary_action,
+        if(assigns.mode == :new, do: "Create Collection", else: "Save Changes")
+      )
+
+    ~H"""
+    <.page_header
+      title={@title}
+      section="Ecommerce"
+      description="Static collection form for storefront grouping workflows."
+    />
+
+    <section class="mt-6 grid gap-6 xl:grid-cols-[1fr_22rem]">
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title text-base">Collection Information</h2>
+          <div class="mt-4 grid gap-4 lg:grid-cols-2">
+            <.input name="collection_name" label="Name" value={@collection.name} />
+            <.input name="collection_slug" label="Slug" value={@collection.slug} />
+            <.input
+              name="collection_description"
+              type="textarea"
+              label="Description"
+              value={@collection.description}
+              class="textarea w-full lg:col-span-2"
+            />
+            <.input
+              name="collection_status"
+              type="select"
+              label="Status"
+              value={@collection.status}
+              options={[{"Active", "Active"}, {"Draft", "Draft"}, {"Paused", "Paused"}]}
+            />
+            <.input
+              name="collection_product_count"
+              type="number"
+              label="Product count"
+              value={@collection.product_count}
+            />
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <.link navigate={~p"/admin/collections"} class="btn btn-ghost">Cancel</.link>
+            <button class="btn btn-primary" type="button">{@primary_action}</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="card bg-base-100 shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title text-base">Image Placeholder</h2>
+          <div class="flex aspect-square items-center justify-center rounded-box border border-dashed border-base-300 bg-base-200">
+            <%= if @collection.image do %>
+              <img src={@collection.image} alt="" class="size-full rounded-box object-cover" />
+            <% else %>
+              <.icon name="hero-photo" class="size-10 text-base-content/40" />
+            <% end %>
+          </div>
+          <p class="text-sm text-base-content/60">
+            Image upload and persistence are intentionally not implemented.
+          </p>
+        </div>
+      </aside>
+    </section>
+    """
+  end
+
+  attr :resource, :map, required: true
+  attr :resource_type, :atom, required: true
+
+  def delete_confirmation_page(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :resource_label,
+        if(assigns.resource_type == :product, do: "product", else: "collection")
+      )
+
+    ~H"""
+    <.page_header
+      title={"Delete #{String.capitalize(@resource_label)}"}
+      section="Ecommerce"
+      description="Mock delete confirmation. No records will be deleted."
+    />
+
+    <section class="card card-border mt-6 max-w-2xl bg-base-100">
+      <div class="card-body">
+        <div class="flex items-start gap-4">
+          <div class="rounded-box bg-error/10 p-3 text-error">
+            <.icon name="hero-exclamation-triangle" class="size-6" />
+          </div>
+          <div>
+            <h2 class="text-lg font-semibold">
+              Are you sure you want to delete this {@resource_label}?
+            </h2>
+            <p class="mt-2 text-base-content/60">
+              This is a mock action and will not delete real data.
+            </p>
+            <div class="mt-5 rounded-box bg-base-200 p-4">
+              <p class="font-medium">{@resource.name}</p>
+              <p class="text-sm text-base-content/60">/{@resource.slug}</p>
             </div>
-            <.status_badge status={collection.status} />
           </div>
-          <div class="mt-4 flex items-center justify-between">
-            <span class="text-sm text-base-content/60">Products</span>
-            <span class="font-semibold">{collection.product_count}</span>
-          </div>
-          <div class="card-actions mt-4 justify-end">
-            <.row_actions />
-          </div>
+        </div>
+        <div class="card-actions mt-6 justify-end">
+          <.link navigate={delete_cancel_path(@resource_type)} class="btn btn-ghost">Cancel</.link>
+          <button class="btn btn-error" type="button">Delete placeholder</button>
         </div>
       </div>
     </section>
@@ -695,22 +976,48 @@ defmodule CaHeoShopWeb.AdminLive do
     """
   end
 
+  attr :view, :string, default: nil
+  attr :edit, :string, default: nil
+  attr :delete, :string, default: nil
+
   def row_actions(assigns) do
     ~H"""
     <div class="join">
-      <button class="btn btn-square btn-ghost btn-sm join-item" type="button" aria-label="View">
-        <.icon name="hero-eye" class="size-4" />
-      </button>
-      <button class="btn btn-square btn-ghost btn-sm join-item" type="button" aria-label="Edit">
-        <.icon name="hero-pencil-square" class="size-4" />
-      </button>
-      <button
-        class="btn btn-square btn-error btn-outline btn-sm join-item border-transparent"
-        type="button"
-        aria-label="Delete"
-      >
-        <.icon name="hero-trash" class="size-4" />
-      </button>
+      <%= if @view do %>
+        <.link navigate={@view} class="btn btn-square btn-ghost btn-sm join-item" aria-label="View">
+          <.icon name="hero-eye" class="size-4" />
+        </.link>
+      <% else %>
+        <button class="btn btn-square btn-ghost btn-sm join-item" type="button" aria-label="View">
+          <.icon name="hero-eye" class="size-4" />
+        </button>
+      <% end %>
+      <%= if @edit do %>
+        <.link navigate={@edit} class="btn btn-square btn-ghost btn-sm join-item" aria-label="Edit">
+          <.icon name="hero-pencil-square" class="size-4" />
+        </.link>
+      <% else %>
+        <button class="btn btn-square btn-ghost btn-sm join-item" type="button" aria-label="Edit">
+          <.icon name="hero-pencil-square" class="size-4" />
+        </button>
+      <% end %>
+      <%= if @delete do %>
+        <.link
+          navigate={@delete}
+          class="btn btn-square btn-error btn-outline btn-sm join-item border-transparent"
+          aria-label="Delete"
+        >
+          <.icon name="hero-trash" class="size-4" />
+        </.link>
+      <% else %>
+        <button
+          class="btn btn-square btn-error btn-outline btn-sm join-item border-transparent"
+          type="button"
+          aria-label="Delete"
+        >
+          <.icon name="hero-trash" class="size-4" />
+        </button>
+      <% end %>
     </div>
     """
   end
@@ -741,10 +1048,56 @@ defmodule CaHeoShopWeb.AdminLive do
 
   defp page_title(:dashboard), do: "Admin Dashboard"
   defp page_title(:products), do: "Admin Products"
+  defp page_title(:product_new), do: "Create Product"
+  defp page_title(:product_edit), do: "Edit Product"
+  defp page_title(:product_delete), do: "Delete Product"
   defp page_title(:orders), do: "Admin Orders"
   defp page_title(:customers), do: "Admin Customers"
   defp page_title(:collections), do: "Admin Collections"
+  defp page_title(:collection_new), do: "Create Collection"
+  defp page_title(:collection_edit), do: "Edit Collection"
+  defp page_title(:collection_delete), do: "Delete Collection"
   defp page_title(:settings), do: "Admin Settings"
+
+  defp product_action?(action),
+    do: action in [:products, :product_new, :product_edit, :product_delete]
+
+  defp collection_action?(action),
+    do: action in [:collections, :collection_new, :collection_edit, :collection_delete]
+
+  defp find_by_slug(items, slug) when is_binary(slug), do: Enum.find(items, &(&1.slug == slug))
+  defp find_by_slug(_items, _slug), do: nil
+
+  defp delete_cancel_path(:product), do: ~p"/admin/products"
+  defp delete_cancel_path(:collection), do: ~p"/admin/collections"
+
+  defp blank_product do
+    %{
+      name: "",
+      slug: "",
+      description: "",
+      collection: "3D Printed Products",
+      price: "",
+      cost: "",
+      status: "Draft",
+      stock: 0,
+      updated_at: "",
+      image: nil,
+      purchase_count: 0
+    }
+  end
+
+  defp blank_collection do
+    %{
+      name: "",
+      slug: "",
+      description: "",
+      product_count: 0,
+      status: "Draft",
+      image: nil,
+      updated_at: ""
+    }
+  end
 
   defp status_class("Active"), do: "badge-success"
   defp status_class("Available"), do: "badge-success"
@@ -781,6 +1134,18 @@ defmodule CaHeoShopWeb.AdminLive do
         value: "4.8M VND",
         note: "Static reporting preview",
         icon: "hero-banknotes"
+      },
+      %{
+        label: "Profit Placeholder",
+        value: "1.6M VND",
+        note: "Mock estimate only",
+        icon: "hero-chart-pie"
+      },
+      %{
+        label: "Inventory Value Placeholder",
+        value: "2.2M VND",
+        note: "Mock stock value",
+        icon: "hero-archive-box"
       }
     ]
   end
@@ -790,44 +1155,69 @@ defmodule CaHeoShopWeb.AdminLive do
       %{
         name: "Modular Desk Organizer",
         sku: "PRD-1001",
+        slug: "modular-desk-organizer",
+        description:
+          "A 3D printed desk tray system with movable cups for tools, pens, and small components.",
         collection: "3D Printed Products",
         price: "120.000 VND",
+        cost: "45.000 VND",
         status: "Available",
         stock: 12,
         updated_at: "2026-06-10",
-        image: ~p"/images/storefront/product-organizer.svg"
+        image: ~p"/images/storefront/product-organizer.svg",
+        purchase_count: 128
       },
       %{
         name: "Starter Electronics Kit",
         sku: "KIT-2001",
+        slug: "starter-electronics-kit",
+        description:
+          "A beginner-friendly DIY kit with breadboard parts and a small guide for simple circuits.",
         collection: "DIY Kits",
         price: "180.000 VND",
+        cost: "95.000 VND",
         status: "Low stock",
         stock: 3,
         updated_at: "2026-06-09",
-        image: ~p"/images/storefront/product-kit.svg"
+        image: ~p"/images/storefront/product-kit.svg",
+        purchase_count: 96
       },
       %{
         name: "Custom Plant Holder",
         sku: "HYD-3001",
+        slug: "custom-plant-holder",
+        description:
+          "A compact plant holder for hydroponic experiments, sized for small home grow setups.",
         collection: "Hydroponics",
         price: "95.000 VND",
+        cost: "32.000 VND",
         status: "Available",
         stock: 18,
         updated_at: "2026-06-08",
-        image: ~p"/images/storefront/product-holder.svg"
+        image: ~p"/images/storefront/product-holder.svg",
+        purchase_count: 72
       },
       %{
         name: "Prototype Print Request",
         sku: "CUS-4001",
+        slug: "prototype-print-request",
+        description: "A placeholder product for custom 3D print request workflows.",
         collection: "Custom Orders",
         price: "Quote",
+        cost: "TBD",
         status: "Draft",
         stock: 0,
         updated_at: "2026-06-07",
-        image: ~p"/images/storefront/custom-order.svg"
+        image: ~p"/images/storefront/custom-order.svg",
+        purchase_count: 31
       }
     ]
+  end
+
+  defp mock_top_purchased_products do
+    mock_products()
+    |> Enum.sort_by(& &1.purchase_count, :desc)
+    |> Enum.take(5)
   end
 
   defp mock_orders do
@@ -904,12 +1294,39 @@ defmodule CaHeoShopWeb.AdminLive do
       %{
         name: "3D Printed Products",
         slug: "3d-printed-products",
+        description: "Printed organizers, holders, tools, and functional parts.",
         product_count: 9,
-        status: "Active"
+        status: "Active",
+        image: ~p"/images/storefront/category-prints.svg",
+        updated_at: "2026-06-10"
       },
-      %{name: "DIY Kits", slug: "diy-kits", product_count: 5, status: "Active"},
-      %{name: "Hydroponics", slug: "hydroponics", product_count: 4, status: "Active"},
-      %{name: "Custom Orders", slug: "custom-orders", product_count: 2, status: "Paused"}
+      %{
+        name: "DIY Kits",
+        slug: "diy-kits",
+        description: "Starter electronics and maker project kits.",
+        product_count: 5,
+        status: "Active",
+        image: ~p"/images/storefront/category-kits.svg",
+        updated_at: "2026-06-09"
+      },
+      %{
+        name: "Hydroponics",
+        slug: "hydroponics",
+        description: "Hydroponic accessories and small home growing tools.",
+        product_count: 4,
+        status: "Active",
+        image: ~p"/images/storefront/category-garden.svg",
+        updated_at: "2026-06-08"
+      },
+      %{
+        name: "Custom Orders",
+        slug: "custom-orders",
+        description: "Custom print requests and made-to-order variations.",
+        product_count: 2,
+        status: "Paused",
+        image: ~p"/images/storefront/custom-order.svg",
+        updated_at: "2026-06-07"
+      }
     ]
   end
 

@@ -48,9 +48,15 @@ defmodule CaHeoShopWeb.Router do
       on_mount: [{CaHeoShopWeb.UserAuth, :require_authenticated}] do
       live "/admin", AdminLive, :dashboard
       live "/admin/products", AdminLive, :products
+      live "/admin/products/new", AdminLive, :product_new
+      live "/admin/products/:slug/edit", AdminLive, :product_edit
+      live "/admin/products/:slug/delete", AdminLive, :product_delete
       live "/admin/orders", AdminLive, :orders
       live "/admin/customers", AdminLive, :customers
       live "/admin/collections", AdminLive, :collections
+      live "/admin/collections/new", AdminLive, :collection_new
+      live "/admin/collections/:slug/edit", AdminLive, :collection_edit
+      live "/admin/collections/:slug/delete", AdminLive, :collection_delete
       live "/admin/settings", AdminLive, :settings
 
       live "/users/settings", UserLive.Settings, :edit
