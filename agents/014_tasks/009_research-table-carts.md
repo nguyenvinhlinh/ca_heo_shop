@@ -1,0 +1,504 @@
+# Task 009: Research Carts Database Schema
+
+## Objective
+
+Research the current storefront, cart, checkout, user/authentication model, and product model, then propose a database schema for the shopping cart.
+
+The expected output is a research document:
+
+```text
+research/012-table-carts.md
+```
+
+This task is for research and database design proposal only.
+
+Do not create migrations, Ecto schemas, Ecto contexts, or real cart behavior in this task.
+
+---
+
+## Deliverable
+
+Create the following file:
+
+```text
+research/012-table-carts.md
+```
+
+The document should describe the proposed database schema for `carts` based on:
+
+* Current cart UI
+* Current checkout UI
+* Existing user/authentication tables
+* Product schema research
+* Expected ecommerce behavior for Ca Heo DIY
+
+---
+
+## Required Reading
+
+Before starting, read:
+
+```text
+AGENTS.md
+agents/001_phoenix-agent.md
+agents/010_business-context.md
+agents/011_architecture.md
+agents/012_database-model.md
+agents/013_ui-system.md
+agents/014_task-workflow.md
+tasks/004-build-storefront-skeleton.md
+tasks/007-research-current-database-model.md
+```
+
+Also read these research files if they exist:
+
+```text
+research/010_table-collections.md
+research/011-table-products-product-images.md
+```
+
+Inspect current code related to:
+
+```text
+/cart
+/checkout
+/products
+/products/:slug
+/account
+/orders
+lib/**/accounts
+priv/repo/migrations
+```
+
+If some routes, files, or research documents do not exist yet, document that clearly.
+
+---
+
+## Core Rule
+
+This is a research task only.
+
+Do not create, modify, or run:
+
+* Database migrations
+* Ecto schemas
+* Ecto contexts
+* Repo queries
+* Seeds
+* Tests
+* Real cart persistence
+* Real checkout behavior
+* Real order creation
+
+The goal is to produce a database design proposal that can be reviewed before implementation.
+
+---
+
+## Known Requirements
+
+The proposed cart schema must support these initial fields:
+
+```text
+customer_id
+product_id
+quantity
+```
+
+These requirements are intentionally minimal.
+
+During research, if additional fields appear necessary, propose them clearly and explain why.
+
+Do not add fields blindly.
+
+---
+
+## Relationship Requirements
+
+### Customer Relationship
+
+Each cart row should belong to one customer.
+
+Expected field:
+
+```text
+customer_id
+```
+
+Research and document whether `customer_id` should reference:
+
+```text
+users.id
+```
+
+or whether a separate future `customers` table is needed.
+
+For the first implementation, prefer the simplest approach that fits the current authentication model.
+
+The research document should explain:
+
+* Whether current users represent customers
+* Whether `customer_id` should be named `user_id` instead
+* Tradeoffs between `customer_id` and `user_id`
+* Whether guest carts should be deferred
+
+---
+
+### Product Relationship
+
+Each cart row should belong to one product.
+
+Expected field:
+
+```text
+product_id
+```
+
+Research and document:
+
+* How this relates to the proposed `products` table
+* Whether the product price should be copied into cart or read from product
+* Whether product deletion should restrict, nullify, or delete related cart rows
+
+For the first implementation, prefer simple cart behavior.
+
+---
+
+### Quantity
+
+Each cart row must store product quantity.
+
+Expected field:
+
+```text
+quantity
+```
+
+Research and document:
+
+* Field type
+* Default value
+* Minimum allowed value
+* Whether zero quantity should be allowed
+* Whether quantity should be limited by stock quantity
+
+Do not implement inventory validation in this task.
+
+---
+
+## Important Schema Question
+
+Research whether the project should use:
+
+```text
+Option A:
+A single carts table where each row represents one product in one customer's cart.
+
+Option B:
+A carts table representing the cart header, plus a cart_items table representing products in the cart.
+```
+
+Example Option A:
+
+```text
+carts
+- id
+- customer_id
+- product_id
+- quantity
+- inserted_at
+- updated_at
+```
+
+Example Option B:
+
+```text
+carts
+- id
+- customer_id
+- status
+- inserted_at
+- updated_at
+
+cart_items
+- id
+- cart_id
+- product_id
+- quantity
+- inserted_at
+- updated_at
+```
+
+The user’s initial requirement uses the table name:
+
+```text
+carts
+```
+
+with:
+
+```text
+customer_id
+product_id
+quantity
+```
+
+So the research document should evaluate whether this means:
+
+```text
+carts as cart line items
+```
+
+or whether a more explicit `cart_items` table should be introduced later.
+
+For the first implementation, recommend the simplest schema that supports the current UI.
+
+---
+
+## Areas To Research
+
+### Storefront Cart Usage
+
+Inspect the cart page.
+
+Research:
+
+* What data the cart page displays
+* Whether cart item quantity can be changed
+* Whether subtotal is shown
+* Whether product image, name, slug, price, or availability is needed
+* Whether cart supports removing items
+* Whether cart state is currently mock data only
+
+Document what fields the cart UI needs.
+
+---
+
+### Checkout Usage
+
+Inspect the checkout page.
+
+Research:
+
+* What data checkout needs from cart
+* Whether checkout reads cart items directly
+* Whether checkout requires customer information
+* Whether checkout creates an order yet
+* Whether shipping/payment fields affect the cart schema
+
+Do not design the full orders schema in this task.
+
+Only document cart-related needs.
+
+---
+
+### Authentication and Customer Model
+
+Inspect the existing authentication model.
+
+Research:
+
+* Existing users table
+* Existing user schema
+* Whether users are customers
+* Whether buyer/customer role exists
+* Whether guest checkout exists or should be deferred
+
+Document whether `customer_id` should reference `users.id` for now.
+
+---
+
+### Product Model Dependency
+
+Inspect product mock data and product research.
+
+Research:
+
+* Whether products have stable IDs yet
+* Whether product slugs are used in cart UI
+* Whether cart should store `product_id` only
+* Whether product image and product name should be read through product association
+* Whether price should be read from product or snapshotted later in order items
+
+Cart should usually stay simple. Order pricing snapshots should be handled in a future orders schema.
+
+---
+
+## Proposed Schema Content
+
+The research document should propose a first version of the cart schema.
+
+At minimum, evaluate these fields:
+
+```text
+id
+customer_id
+product_id
+quantity
+inserted_at
+updated_at
+```
+
+Also evaluate whether these fields are needed now or later:
+
+```text
+status
+session_id
+cart_id
+cart_item_id
+unit_price_snapshot
+currency
+expires_at
+metadata
+```
+
+Separate required fields from optional or deferred fields.
+
+---
+
+## Indexes and Constraints
+
+The research document should recommend database constraints and indexes.
+
+Evaluate:
+
+```text
+foreign key from carts.customer_id to users.id
+foreign key from carts.product_id to products.id
+unique index on customer_id + product_id
+index on customer_id
+index on product_id
+not null constraints
+quantity positive constraint
+```
+
+Also document tradeoffs.
+
+The research document should explain why a unique index on:
+
+```text
+customer_id + product_id
+```
+
+may be useful to prevent duplicate cart rows for the same product.
+
+---
+
+## Naming Recommendation
+
+Recommend final naming for:
+
+```text
+Table name
+Schema module
+Context module
+Relationship fields
+Route usage
+```
+
+Examples to evaluate:
+
+```text
+carts
+CaHeoShop.Carts.Cart
+CaHeoShop.Carts
+customer_id
+product_id
+```
+
+Also evaluate whether this would be better as:
+
+```text
+cart_items
+CaHeoShop.Cart.CartItem
+```
+
+or under a broader commerce context later.
+
+Do not implement naming changes in this task.
+
+---
+
+## Expected Output Structure
+
+The file `research/012-table-carts.md` should contain:
+
+1. Overview
+2. Current UI Findings
+3. Current Authentication and Customer Model
+4. Product Relationship Analysis
+5. Cart Schema Design Options
+6. Proposed `carts` Table
+7. Field-by-Field Explanation
+8. Indexes and Constraints
+9. Recommended Ecto Schema Shape
+10. Recommended Migration Shape
+11. Optional or Deferred Fields
+12. Open Questions
+13. Final Recommendation
+
+---
+
+## Recommended Migration Shape
+
+The research document may include a sample migration shape as documentation only.
+
+Do not create the actual migration file.
+
+Example format:
+
+```elixir
+create table(:carts) do
+  add :customer_id, references(:users, on_delete: :delete_all), null: false
+  add :product_id, references(:products, on_delete: :restrict), null: false
+  add :quantity, :integer, null: false, default: 1
+
+  timestamps(type: :utc_datetime)
+end
+
+create index(:carts, [:customer_id])
+create index(:carts, [:product_id])
+create unique_index(:carts, [:customer_id, :product_id])
+```
+
+If research recommends `user_id` instead of `customer_id`, document that clearly.
+
+If research recommends `cart_items` instead of a single `carts` table, provide the alternative sample migration shape as a proposal only.
+
+These samples should be treated as proposals, not implementation.
+
+---
+
+## Research Guidance
+
+During research, if additional fields appear necessary from the UI or business workflow, add them to the proposal.
+
+However:
+
+* Do not add fields just because ecommerce platforms usually have them.
+* Keep the first implementation simple.
+* Clearly separate required fields from deferred fields.
+* Explain why each extra field is recommended.
+* Do not design full orders, payments, shipping, or inventory systems in this task.
+
+---
+
+## Success Criteria
+
+The task is complete when:
+
+* `research/012-table-carts.md` is created.
+* The document is based on current UI and mock data observations.
+* The known cart requirements are addressed.
+* The relationship between cart, customer, and product is clearly explained.
+* The document evaluates whether `customer_id` should reference `users.id`.
+* The document evaluates whether `carts` should be a line-item table or whether `cart_items` should exist later.
+* Required fields are identified.
+* Optional or deferred fields are separated from required fields.
+* Indexes and constraints are recommended.
+* Open questions are documented.
+* No database migration is created.
+* No Ecto schema is created.
+* No Ecto context is created.
+* No Repo queries are added.
+* No real cart behavior is implemented.
+* No production code is changed unless needed only to inspect references.
