@@ -1,9 +1,9 @@
-defmodule CaHeoShop.CatalogFixtures do
+defmodule CaHeoShop.CollectionsFixtures do
   @moduledoc """
-  This module defines test helpers for creating catalog entities.
+  This module defines test helpers for creating collections.
   """
 
-  alias CaHeoShop.Catalog
+  alias CaHeoShop.Collections
 
   def unique_collection_slug, do: "collection-#{System.unique_integer([:positive])}"
 
@@ -23,7 +23,7 @@ defmodule CaHeoShop.CatalogFixtures do
     {:ok, collection} =
       attrs
       |> valid_collection_attributes()
-      |> Catalog.create_collection()
+      |> Collections.create_collection()
 
     collection
   end

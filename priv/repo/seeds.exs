@@ -10,7 +10,7 @@
 # We recommend using the bang functions (`insert!`, `update!`
 # and so on) as they will fail if something goes wrong.
 
-alias CaHeoShop.Catalog.Collection
+alias CaHeoShop.Collections.Collection
 alias CaHeoShop.ProductImages.ProductImage
 alias CaHeoShop.ProductVariants.ProductVariant
 alias CaHeoShop.Products.Product

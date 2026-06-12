@@ -27,8 +27,8 @@ Implement only:
 
 ```text
 collections
-CaHeoShop.Catalog.Collection
-CaHeoShop.Catalog
+CaHeoShop.Collections.Collection
+CaHeoShop.Collections
 collection seed data
 ```
 
@@ -81,13 +81,13 @@ If `nav_display_order` is `NULL`, the header navigation must not display that co
 Create:
 
 ```text
-lib/ca_heo_shop/catalog/collection.ex
+lib/ca_heo_shop/collections/collection.ex
 ```
 
 Module:
 
 ```text
-CaHeoShop.Catalog.Collection
+CaHeoShop.Collections.Collection
 ```
 
 Requirements:
@@ -106,13 +106,13 @@ Requirements:
 Create:
 
 ```text
-lib/ca_heo_shop/catalog.ex
+lib/ca_heo_shop/collections.ex
 ```
 
 Module:
 
 ```text
-CaHeoShop.Catalog
+CaHeoShop.Collections
 ```
 
 Implement simple CRUD functions for collections:
@@ -167,8 +167,8 @@ Add focused tests for:
 ## Acceptance Criteria
 
 * Migration creates the exact `collections` table and constraints.
-* `CaHeoShop.Catalog.Collection` compiles.
-* `CaHeoShop.Catalog` exposes the required functions.
+* `CaHeoShop.Collections.Collection` compiles.
+* `CaHeoShop.Collections` exposes the required functions.
 * Seed data can run more than once without duplicating rows.
 * `mix test` passes.
 * `mix precommit` passes.

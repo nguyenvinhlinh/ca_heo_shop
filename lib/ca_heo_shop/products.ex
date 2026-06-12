@@ -6,7 +6,7 @@ defmodule CaHeoShop.Products do
   import Ecto.Query, warn: false
   alias CaHeoShop.Repo
 
-  alias CaHeoShop.Catalog.Collection
+  alias CaHeoShop.Collections.Collection
   alias CaHeoShop.Products.Product
 
   def list_products do

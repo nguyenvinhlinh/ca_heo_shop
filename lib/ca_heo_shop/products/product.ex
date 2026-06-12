@@ -2,7 +2,7 @@ defmodule CaHeoShop.Products.Product do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias CaHeoShop.Catalog.Collection
+  alias CaHeoShop.Collections.Collection
 
   schema "products" do
     field :slug, :string

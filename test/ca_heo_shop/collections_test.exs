@@ -1,14 +1,14 @@
-defmodule CaHeoShop.CatalogTest do
+defmodule CaHeoShop.CollectionsTest do
   use CaHeoShop.DataCase
 
-  alias CaHeoShop.Catalog
-  alias CaHeoShop.Catalog.Collection
+  alias CaHeoShop.Collections
+  alias CaHeoShop.Collections.Collection
 
-  import CaHeoShop.CatalogFixtures
+  import CaHeoShop.CollectionsFixtures
 
   describe "collections" do
     test "change_collection/2 requires name_vi, name_en, and slug" do
-      changeset = Catalog.change_collection(%Collection{}, %{})
+      changeset = Collections.change_collection(%Collection{}, %{})
 
       assert %{name_vi: ["can't be blank"], name_en: ["can't be blank"], slug: ["can't be blank"]} =
                errors_on(changeset)
@@ -18,14 +18,14 @@ defmodule CaHeoShop.CatalogTest do
       collection = collection_fixture()
 
       assert {:error, changeset} =
-               Catalog.create_collection(valid_collection_attributes(slug: collection.slug))
+               Collections.create_collection(valid_collection_attributes(slug: collection.slug))
 
       assert "has already been taken" in errors_on(changeset).slug
     end
 
     test "change_collection/2 validates non-negative nav_display_order" do
       changeset =
-        Catalog.change_collection(
+        Collections.change_collection(
           %Collection{},
           valid_collection_attributes(nav_display_order: -1)
         )
@@ -38,7 +38,7 @@ defmodule CaHeoShop.CatalogTest do
       second = collection_fixture(nav_display_order: 1, name_vi: "Second")
       first = collection_fixture(nav_display_order: 0, name_vi: "First")
 
-      nav_collections = Catalog.list_nav_collections()
+      nav_collections = Collections.list_nav_collections()
 
       assert Enum.map(nav_collections, & &1.id) == [first.id, second.id]
       refute hidden.id in Enum.map(nav_collections, & &1.id)

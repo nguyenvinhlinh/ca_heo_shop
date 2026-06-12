@@ -4,7 +4,7 @@ defmodule CaHeoShop.ProductsTest do
   alias CaHeoShop.Products
   alias CaHeoShop.Products.Product
 
-  import CaHeoShop.CatalogFixtures
+  import CaHeoShop.CollectionsFixtures
   import CaHeoShop.ProductsFixtures
 
   describe "products" do

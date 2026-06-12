@@ -93,7 +93,7 @@ Requirements:
 * Use `Ecto.Schema`.
 * Use `Ecto.Changeset`.
 * Define all table fields.
-* `belongs_to :collection, CaHeoShop.Catalog.Collection`.
+* `belongs_to :collection, CaHeoShop.Collections.Collection`.
 * Validate required fields: `collection_id`, `slug`, `name_vi`, `name_en`.
 * Add unique constraint for `slug`.
 * Add foreign key constraint for `collection_id`.

@@ -1,12 +1,12 @@
-defmodule CaHeoShop.Catalog do
+defmodule CaHeoShop.Collections do
   @moduledoc """
-  The Catalog context.
+  The Collections context.
   """
 
   import Ecto.Query, warn: false
   alias CaHeoShop.Repo
 
-  alias CaHeoShop.Catalog.Collection
+  alias CaHeoShop.Collections.Collection
 
   def list_collections do
     Repo.all(Collection)

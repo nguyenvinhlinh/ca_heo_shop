@@ -5,7 +5,7 @@ defmodule CaHeoShop.ProductsFixtures do
 
   alias CaHeoShop.Products
 
-  import CaHeoShop.CatalogFixtures
+  import CaHeoShop.CollectionsFixtures
 
   def unique_product_slug, do: "product-#{System.unique_integer([:positive])}"
 

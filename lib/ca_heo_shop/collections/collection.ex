@@ -1,4 +1,4 @@
-defmodule CaHeoShop.Catalog.Collection do
+defmodule CaHeoShop.Collections.Collection do
   use Ecto.Schema
   import Ecto.Changeset
 
