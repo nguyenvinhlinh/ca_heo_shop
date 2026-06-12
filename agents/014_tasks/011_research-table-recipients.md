@@ -7,7 +7,7 @@ Research the current customer, checkout, account settings, and sale order flow, 
 The expected output is a research document:
 
 ```text
-research/014_table-recipents.md
+research/014_table-recipients.md
 ```
 
 This task is for research and database design proposal only.
@@ -21,7 +21,7 @@ Do not create migrations, Ecto schemas, Ecto contexts, or real recipient/address
 Create the following file:
 
 ```text
-research/014_table-recipents.md
+research/014_table-recipients.md
 ```
 
 The document should describe the proposed database schema for customer recipients based on:
@@ -112,26 +112,24 @@ During research, evaluate whether the final database table and field names shoul
 
 ```text
 recipients
-recipient_name
-recipient_address
-recipient_phone_number
+name
+address
+phone_number
+is_default
 ```
 
-or keep the requested spelling:
+or keep the requested misspelled table spelling:
 
 ```text
 recipents
-recipent_name
-recipent_address
-recipent_phone_number
 ```
 
 The research document should make a clear recommendation before implementation.
 
-The deliverable filename must remain:
+The deliverable filename is:
 
 ```text
-research/014_table-recipents.md
+research/014_table-recipients.md
 ```
 
 ---
@@ -164,18 +162,20 @@ At minimum, research these fields:
 
 ```text
 customer_id
-recipent_name
-recipent_address
-recipent_phone_number
+name
+address
+phone_number
+is_default
 ```
 
-Also evaluate the corrected spelling version:
+Use corrected spelling for column names:
 
 ```text
 customer_id
-recipient_name
-recipient_address
-recipient_phone_number
+name
+address
+phone_number
+is_default
 ```
 
 ---
@@ -272,19 +272,18 @@ Evaluate:
 ```text
 id
 customer_id
-recipient_name
-recipient_address
-recipient_phone_number
+name
+address
+phone_number
+is_default
 inserted_at
 updated_at
 ```
 
-Also discuss the user-provided spelling:
+Also discuss the user-provided misspelled table spelling:
 
 ```text
-recipent_name
-recipent_address
-recipent_phone_number
+recipents
 ```
 
 and recommend final naming.
@@ -297,7 +296,6 @@ Evaluate whether these fields are needed now or later:
 
 ```text
 label
-is_default
 address_line1
 address_line2
 ward
@@ -328,7 +326,7 @@ Research whether the first implementation should use:
 
 ```text
 Option A:
-recipient_address as one text field
+address as one text field
 ```
 
 or:
@@ -353,9 +351,10 @@ At minimum, evaluate:
 ```text
 id
 customer_id
-recipient_name
-recipient_address
-recipient_phone_number
+name
+address
+phone_number
+is_default
 inserted_at
 updated_at
 ```
@@ -377,7 +376,7 @@ foreign key from recipients.customer_id to users.id
 index on customer_id
 not null constraints
 phone number format expectations
-default recipient uniqueness per customer if is_default is added later
+default recipient uniqueness per customer
 ```
 
 Also document tradeoffs.
@@ -422,7 +421,7 @@ Do not implement naming changes in this task.
 
 ## Expected Output Structure
 
-The file `research/014_table-recipents.md` should contain:
+The file `research/014_table-recipients.md` should contain:
 
 1. Overview
 2. Current UI Findings
@@ -455,14 +454,18 @@ Recommended corrected spelling example:
 create table(:recipients) do
   add :customer_id, references(:users, on_delete: :delete_all), null: false
 
-  add :recipient_name, :string, null: false
-  add :recipient_address, :text, null: false
-  add :recipient_phone_number, :string, null: false
+  add :name, :string, null: false
+  add :address, :text, null: false
+  add :phone_number, :string, null: false
+  add :is_default, :boolean, null: false, default: false
 
   timestamps(type: :utc_datetime)
 end
 
 create index(:recipients, [:customer_id])
+create unique_index(:recipients, [:customer_id],
+         where: "is_default = true",
+         name: :recipients_one_default_per_customer_index)
 ```
 
 If the research recommends keeping the requested spelling, provide the alternative migration shape as documentation only.
@@ -492,7 +495,7 @@ However:
 
 The task is complete when:
 
-* `research/014_table-recipents.md` is created.
+* `research/014_table-recipients.md` is created.
 * The document is based on current UI and mock data observations.
 * The known recipient requirements are addressed.
 * The customer/user relationship is clearly explained.

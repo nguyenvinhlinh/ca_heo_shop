@@ -98,7 +98,7 @@ research/010_table-collections.md
 research/011-table-products-product-images.md
 research/012-table-carts.md
 research/013_table-sale-orders.md
-research/014_table-recipents.md
+research/014_table-recipients.md
 research/015_table-store-settings.md
 ```
 
@@ -467,7 +467,7 @@ Important spelling note:
 If the research file is named:
 
 ```text
-research/014_table-recipents.md
+research/014_table-recipients.md
 ```
 
 still evaluate the final table naming recommendation from the research.
@@ -543,7 +543,7 @@ Example:
 - research/011-table-products-product-images.md
 - research/012-table-carts.md
 - research/013_table-sale-orders.md
-- research/014_table-recipents.md
+- research/014_table-recipients.md
 - research/015_table-store-settings.md
 ```
 
