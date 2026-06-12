@@ -33,12 +33,19 @@ defmodule CaHeoShopWeb.Layouts do
 
   attr :variant, :atom,
     default: :default,
-    values: [:default, :storefront],
+    values: [:default, :storefront, :admin],
     doc: "layout variant"
 
   slot :inner_block, required: true
 
   def app(%{variant: :storefront} = assigns) do
+    ~H"""
+    {render_slot(@inner_block)}
+    <.flash_group flash={@flash} />
+    """
+  end
+
+  def app(%{variant: :admin} = assigns) do
     ~H"""
     {render_slot(@inner_block)}
     <.flash_group flash={@flash} />

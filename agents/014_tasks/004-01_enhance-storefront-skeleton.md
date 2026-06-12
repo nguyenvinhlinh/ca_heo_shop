@@ -66,7 +66,7 @@ The main navbar should contain:
 
 ```text
 Products
-Shop
+Collections
 Cart
 ```
 
@@ -96,18 +96,18 @@ Purpose:
 
 ---
 
-### Shop
+### Collections
 
-The `Shop` navigation item should become a dropdown menu.
+The `Collections` navigation item should become a dropdown menu.
 
 Expected behavior:
 
 ```text
-Shop
-  → Collections dropdown
+Collections
+  → Collection list dropdown
 ```
 
-When the user opens the `Shop` dropdown, it should display a list of all available collections.
+When the user opens the `Collections` dropdown, it should display a list of all available collections.
 
 Each collection item should link to a collection page or placeholder route.
 
@@ -272,7 +272,7 @@ Expected behavior:
 
 * Homepage images should render correctly.
 * Product images should display correctly if shown on the homepage.
-* Category or collection images should display correctly if shown on the homepage.
+* Collection images should display correctly if shown on the homepage.
 * Broken image icons should not appear.
 * Image containers should preserve layout even when using mock images.
 
@@ -303,7 +303,7 @@ The header should:
 * Keep navigation simple.
 * Avoid introducing a new design language.
 
-The `Shop` dropdown should:
+The `Collections` dropdown should:
 
 * Be easy to discover.
 * Be readable.
@@ -442,9 +442,10 @@ The homepage should display images correctly.
 The task is complete when:
 
 * `Products` links to `/products`.
-* `Shop` is shown in the storefront header.
-* `Shop` opens a dropdown list of mock collections.
+* `Collections` is shown in the storefront header.
+* `Collections` opens a dropdown list of mock collections.
 * Collection dropdown items are clickable.
+* The homepage collection section heading uses `Shop by Collections`.
 * `Cart` links to `/cart`.
 * `Account` is removed from the main navbar.
 * A mock logged-in user display area exists if appropriate.
@@ -481,13 +482,13 @@ After this task, the storefront navigation should become:
 Products
   → All products
 
-Shop
-  → Collections
-      → 3D Printed Products
-      → DIY Kits
-      → Home Accessories
-      → Hydroponics
-      → Custom Orders
+Collections
+  → All Collections
+  → 3D Printed Products
+  → DIY Kits
+  → Home Accessories
+  → Hydroponics
+  → Custom Orders
 
 Cart
   → Cart page

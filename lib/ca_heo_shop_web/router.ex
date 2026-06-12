@@ -46,6 +46,13 @@ defmodule CaHeoShopWeb.Router do
 
     live_session :require_authenticated_user,
       on_mount: [{CaHeoShopWeb.UserAuth, :require_authenticated}] do
+      live "/admin", AdminLive, :dashboard
+      live "/admin/products", AdminLive, :products
+      live "/admin/orders", AdminLive, :orders
+      live "/admin/customers", AdminLive, :customers
+      live "/admin/collections", AdminLive, :collections
+      live "/admin/settings", AdminLive, :settings
+
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end

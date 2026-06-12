@@ -150,6 +150,7 @@ defmodule CaHeoShopWeb.StorefrontLive do
             tabindex="0"
             class="btn btn-ghost btn-sm max-w-48 gap-2 rounded-full"
           >
+            <.icon name="hero-user-circle" class="size-5" />
             <span class="hidden truncate md:inline">{@display_user.name}</span>
           </button>
           <ul
@@ -232,9 +233,7 @@ defmodule CaHeoShopWeb.StorefrontLive do
           class="absolute inset-0 block h-full w-full object-cover object-center"
         />
         <div class="absolute inset-0 bg-base-content/30"></div>
-        <div
-          class="absolute inset-0 left-5 flex flex-col justify-center md:left-10 lg:left-20 "
-        >
+        <div class="absolute inset-0 left-5 flex flex-col justify-center md:left-10 lg:left-20 ">
           <div class="badge badge-sm mb-4 rounded-full font-medium italic">
             MOCK STORE PREVIEW
           </div>
@@ -744,9 +743,7 @@ defmodule CaHeoShopWeb.StorefrontLive do
         class="absolute inset-0 block h-full w-full object-cover object-center"
       />
       <div class="absolute inset-0 bg-base-content/35"></div>
-      <div
-        class="relative flex h-full flex-col items-center justify-center px-5 text-center"
-      >
+      <div class="relative flex h-full flex-col items-center justify-center px-5 text-center">
         <p class="badge badge-sm rounded-full">Mock Collection</p>
         <h1 class="mt-4 text-4xl font-semibold text-base-100 md:text-5xl">
           {@collection.name}

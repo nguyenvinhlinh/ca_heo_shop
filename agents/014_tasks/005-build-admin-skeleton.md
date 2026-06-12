@@ -66,7 +66,7 @@ Create a runnable admin skeleton with the following pages:
 /admin/products
 /admin/orders
 /admin/customers
-/admin/categories
+/admin/collections
 /admin/settings
 ```
 
@@ -131,7 +131,7 @@ Product table columns may include:
 
 ```text
 Product
-Category
+Collection
 Price
 Status
 Stock
@@ -210,22 +210,22 @@ No customer CRUD logic is required.
 
 ---
 
-### Category Management Page
+### Collection Management Page
 
 Create:
 
 ```text
-/admin/categories
+/admin/collections
 ```
 
 Expected sections:
 
 * Page title
-* Create category button
-* Category table or card list
+* Create collection button
+* Collection table or card list
 * Row actions placeholder
 
-Category fields may include:
+Collection fields may include:
 
 ```text
 Name
@@ -235,7 +235,7 @@ Status
 Actions
 ```
 
-Use mock category data only.
+Use mock collection data only.
 
 No create, update, delete, or persistence logic is required.
 
@@ -282,7 +282,7 @@ Mock entities may include:
 products
 orders
 customers
-categories
+collections
 dashboard_metrics
 settings
 ```
@@ -348,7 +348,7 @@ The task is complete when:
 * The admin products route works.
 * The admin orders route works.
 * The admin customers route works.
-* The admin categories route works.
+* The admin collections route works.
 * The admin settings route works.
 * All pages use mock data only.
 * No database migrations are created.
@@ -372,10 +372,10 @@ Dashboard
   → Products
   → Orders
   → Customers
-  → Categories
+  → Collections
   → Settings
 ```
 
-This skeleton will be used to discover future admin workflows and domain concepts such as Product, Category, Order, Customer, Inventory, Store Settings, and Admin Operations.
+This skeleton will be used to discover future admin workflows and domain concepts such as Product, Collection, Order, Customer, Inventory, Store Settings, and Admin Operations.
 
 Do not finalize database design during this task.
