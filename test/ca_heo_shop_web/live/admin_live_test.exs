@@ -181,6 +181,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert html =~ "Product detail"
     assert html =~ "Product summary"
+    assert html =~ "Edit Product"
     assert html =~ "ID ##{product.id}"
     assert html =~ "Kem cap nam cham"
     assert html =~ "Magnetic Cable Clip"
@@ -262,6 +263,200 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     {later_pos, _} = :binary.match(html, "Later variant")
     assert first_pos < second_pos
     assert second_pos < later_pos
+  end
+
+  test "clicking edit product opens the summary dialog", %{conn: conn} do
+    collection =
+      collection_fixture(
+        name_vi: "Bo suu tap cu",
+        name_en: "Old collection",
+        nav_display_order: 1
+      )
+
+    _other_collection =
+      collection_fixture(
+        name_vi: "Bo suu tap moi",
+        name_en: "New collection",
+        nav_display_order: 0
+      )
+
+    product =
+      product_fixture(
+        collection: collection,
+        slug: "edit-product-summary",
+        name_vi: "Ten san pham",
+        name_en: "Product name",
+        description_vi: "Mo ta viet",
+        description_en: "English description"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    html =
+      view
+      |> element("#open-edit-product-dialog")
+      |> render_click()
+
+    assert html =~ "Edit Product"
+    assert html =~ "Collection"
+    assert html =~ "Slug"
+    assert html =~ "Vietnamese name"
+    assert html =~ "English name"
+    assert html =~ "Update product"
+    assert html =~ "Cancel"
+    assert html =~ "No collection"
+    assert html =~ "Bo suu tap cu"
+    assert html =~ "Bo suu tap moi"
+    assert html =~ ~s(name="product[collection_id]")
+    assert html =~ ~s(name="product[slug]")
+    assert html =~ ~s(name="product[name_vi]")
+    assert html =~ ~s(name="product[name_en]")
+    refute html =~ ~s(name="product[description_vi]")
+    refute html =~ ~s(name="product[description_en]")
+    refute html =~ ~s(name="product_variant[production_cost]")
+    refute html =~ ~s(name="product_variant[image_filename]")
+  end
+
+  test "updates product summary from the detail dialog and ignores description params", %{
+    conn: conn
+  } do
+    old_collection =
+      collection_fixture(
+        name_vi: "Bo suu tap cu",
+        name_en: "Old collection",
+        nav_display_order: 1
+      )
+
+    new_collection =
+      collection_fixture(
+        name_vi: "Bo suu tap moi",
+        name_en: "New collection",
+        nav_display_order: 0
+      )
+
+    product =
+      product_fixture(
+        collection: old_collection,
+        slug: "old-summary-slug",
+        name_vi: "Ten cu",
+        name_en: "Old name",
+        description_vi: "Mo ta viet cu",
+        description_en: "Old description"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-edit-product-dialog")
+      |> render_click()
+
+    html =
+      render_submit(view, "save-product-summary", %{
+        "product" => %{
+          "collection_id" => Integer.to_string(new_collection.id),
+          "slug" => "new-summary-slug",
+          "name_vi" => "Ten moi",
+          "name_en" => "New name",
+          "description_vi" => "Bi bo qua",
+          "description_en" => "Ignored"
+        }
+      })
+
+    assert html =~ "Product updated successfully."
+    refute html =~ "Edit Product</h2>"
+    assert html =~ "Bo suu tap moi"
+    assert html =~ "/new-summary-slug"
+    assert html =~ "Ten moi"
+    assert html =~ "New name"
+    assert html =~ "Mo ta viet cu"
+    assert html =~ "Old description"
+
+    updated_product = CaHeoShop.Products.get_product!(product.id)
+    assert updated_product.collection_id == new_collection.id
+    assert updated_product.slug == "new-summary-slug"
+    assert updated_product.name_vi == "Ten moi"
+    assert updated_product.name_en == "New name"
+    assert updated_product.description_vi == "Mo ta viet cu"
+    assert updated_product.description_en == "Old description"
+  end
+
+  test "product summary update can set collection to no collection", %{conn: conn} do
+    collection =
+      collection_fixture(
+        name_vi: "Bo suu tap co san",
+        name_en: "Existing collection",
+        nav_display_order: 0
+      )
+
+    product =
+      product_fixture(
+        collection: collection,
+        slug: "remove-collection",
+        name_vi: "San pham",
+        name_en: "Product"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-edit-product-dialog")
+      |> render_click()
+
+    html =
+      view
+      |> form("#product-summary-form",
+        product: %{
+          collection_id: "",
+          slug: "remove-collection",
+          name_vi: "San pham",
+          name_en: "Product"
+        }
+      )
+      |> render_submit()
+
+    assert html =~ "Product updated successfully."
+    assert html =~ "No collection"
+    assert CaHeoShop.Products.get_product!(product.id).collection_id == nil
+  end
+
+  test "invalid product summary submit keeps the dialog open and shows errors", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "valid-summary-slug",
+        name_vi: "Ten hop le",
+        name_en: "Valid name"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-edit-product-dialog")
+      |> render_click()
+
+    html =
+      view
+      |> form("#product-summary-form",
+        product: %{
+          collection_id: "",
+          slug: "invalid slug",
+          name_vi: "",
+          name_en: ""
+        }
+      )
+      |> render_submit()
+
+    assert html =~ "Edit Product"
+    assert html =~ "can&#39;t be blank"
+    assert html =~ "has invalid format"
+
+    unchanged_product = CaHeoShop.Products.get_product!(product.id)
+    assert unchanged_product.slug == "valid-summary-slug"
+    assert unchanged_product.name_vi == "Ten hop le"
+    assert unchanged_product.name_en == "Valid name"
   end
 
   test "selecting a product image updates the preview and selected state", %{conn: conn} do
@@ -505,8 +700,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "—"
     assert html =~ ~s(class="btn btn-ghost btn-sm" disabled)
     assert html =~ ">View original</button>"
-    refute html =~ "Edit"
-    refute html =~ "Remove"
+    refute html =~ ~s(phx-click="open-edit-variant-dialog")
+    refute html =~ ~s(phx-click="delete-product-variant")
   end
 
   test "clicking new variant opens the dialog with the next display order", %{conn: conn} do

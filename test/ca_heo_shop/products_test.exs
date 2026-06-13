@@ -127,6 +127,80 @@ defmodule CaHeoShop.ProductsTest do
       assert_raise Ecto.NoResultsError, fn -> Products.get_product!(product.id) end
     end
 
+    test "update_product_summary/2 updates only summary fields and allows nil collection_id" do
+      collection = collection_fixture(name_vi: "Bo suu tap cu")
+
+      product =
+        product_fixture(
+          collection: collection,
+          slug: "original-slug",
+          name_vi: "Ten cu",
+          name_en: "Old name",
+          description_vi: "Mo ta cu",
+          description_en: "Old description"
+        )
+
+      assert {:ok, updated_product} =
+               Products.update_product_summary(product, %{
+                 collection_id: nil,
+                 slug: "updated-slug",
+                 name_vi: "Ten moi",
+                 name_en: "New name",
+                 description_vi: "Bi bo qua",
+                 description_en: "Ignored"
+               })
+
+      assert updated_product.collection_id == nil
+      assert updated_product.slug == "updated-slug"
+      assert updated_product.name_vi == "Ten moi"
+      assert updated_product.name_en == "New name"
+      assert updated_product.description_vi == "Mo ta cu"
+      assert updated_product.description_en == "Old description"
+    end
+
+    test "update_product_summary/2 rejects invalid summary fields" do
+      product = product_fixture(slug: "valid-slug")
+      other_product = product_fixture(slug: "taken-slug")
+
+      assert {:error, changeset} =
+               Products.update_product_summary(product, %{
+                 slug: "another-valid-slug",
+                 name_vi: "",
+                 name_en: ""
+               })
+
+      assert "can't be blank" in errors_on(changeset).name_vi
+      assert "can't be blank" in errors_on(changeset).name_en
+
+      assert {:error, changeset} =
+               Products.update_product_summary(product, %{
+                 slug: other_product.slug,
+                 name_vi: "Ten hop le",
+                 name_en: "Valid name"
+               })
+
+      assert "has already been taken" in errors_on(changeset).slug
+
+      assert {:error, changeset} =
+               Products.update_product_summary(product, %{
+                 collection_id: -1,
+                 slug: "valid-slug-2",
+                 name_vi: "Ten hop le",
+                 name_en: "Valid name"
+               })
+
+      assert "does not exist" in errors_on(changeset).collection_id
+
+      assert {:error, changeset} =
+               Products.update_product_summary(product, %{
+                 slug: "invalid slug",
+                 name_vi: "A",
+                 name_en: "B"
+               })
+
+      assert "has invalid format" in errors_on(changeset).slug
+    end
+
     test "reorder_product_images/2 updates display_order sequentially and accepts string ids" do
       product = product_fixture()
 

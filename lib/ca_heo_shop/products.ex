@@ -160,6 +160,12 @@ defmodule CaHeoShop.Products do
     |> Repo.update()
   end
 
+  def update_product_summary(%Product{} = product, attrs) do
+    product
+    |> Product.summary_changeset(attrs)
+    |> Repo.update()
+  end
+
   def update_product_image(%ProductImage{} = product_image, attrs) do
     product_image
     |> ProductImage.changeset(attrs)
@@ -266,6 +272,10 @@ defmodule CaHeoShop.Products do
 
   def change_product(%Product{} = product, attrs \\ %{}) do
     Product.changeset(product, attrs)
+  end
+
+  def change_product_summary(%Product{} = product, attrs \\ %{}) do
+    Product.summary_changeset(product, attrs)
   end
 
   def change_product_image(%ProductImage{} = product_image, attrs \\ %{}) do

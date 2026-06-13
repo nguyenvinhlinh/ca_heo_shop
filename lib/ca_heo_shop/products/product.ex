@@ -32,4 +32,17 @@ defmodule CaHeoShop.Products.Product do
     |> unique_constraint(:slug)
     |> foreign_key_constraint(:collection_id)
   end
+
+  @doc false
+  def summary_changeset(product, attrs) do
+    product
+    |> cast(attrs, [:collection_id, :slug, :name_vi, :name_en])
+    |> validate_required([:slug, :name_vi, :name_en])
+    |> validate_format(:slug, ~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    |> validate_length(:slug, max: 160)
+    |> validate_length(:name_vi, max: 255)
+    |> validate_length(:name_en, max: 255)
+    |> unique_constraint(:slug)
+    |> foreign_key_constraint(:collection_id)
+  end
 end
