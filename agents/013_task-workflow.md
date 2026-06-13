@@ -4,7 +4,7 @@
 
 [DONE] ✅ [13/06/2026 21:09] 039-08_admin_delete_product_variant.md
 
-[backlog] 039-09_admin_product_variant_drag_drop_ordering.md
+[todo] 039-09_admin_product_variant_drag_drop_ordering.md
 
 [Backlog] 033_update-users-with-role-fullname.md
 
