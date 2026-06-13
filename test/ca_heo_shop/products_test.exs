@@ -10,6 +10,53 @@ defmodule CaHeoShop.ProductsTest do
   import CaHeoShop.ProductsFixtures
 
   describe "products" do
+    test "create_product/1 validates slug format and length" do
+      assert {:ok, _product} =
+               Products.create_product(
+                 valid_product_attributes(slug: "pla-red-phone-holder", collection_id: nil)
+               )
+
+      for invalid_slug <- [
+            "Universal Phone Stand",
+            "universal_phone_stand",
+            "universal phone stand",
+            "universal--phone-stand",
+            "Universal-phone-stand"
+          ] do
+        assert {:error, changeset} =
+                 Products.create_product(
+                   valid_product_attributes(slug: invalid_slug, collection_id: nil)
+                 )
+
+        assert "has invalid format" in errors_on(changeset).slug
+      end
+
+      long_slug = String.duplicate("a", 161)
+
+      assert {:error, changeset} =
+               Products.create_product(
+                 valid_product_attributes(slug: long_slug, collection_id: nil)
+               )
+
+      assert "should be at most 160 character(s)" in errors_on(changeset).slug
+    end
+
+    test "create_product/1 validates product name lengths" do
+      long_name = String.duplicate("a", 256)
+
+      assert {:error, changeset} =
+               Products.create_product(
+                 valid_product_attributes(
+                   collection_id: nil,
+                   name_vi: long_name,
+                   name_en: long_name
+                 )
+               )
+
+      assert "should be at most 255 character(s)" in errors_on(changeset).name_vi
+      assert "should be at most 255 character(s)" in errors_on(changeset).name_en
+    end
+
     test "change_product/2 requires slug, name_vi, and name_en only" do
       changeset = Products.change_product(%Product{}, %{})
 

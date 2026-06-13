@@ -2,6 +2,7 @@ defmodule CaHeoShopWeb.ProductLive do
   use CaHeoShopWeb, :live_view
 
   alias CaHeoShop.Collections
+  alias CaHeoShop.Products.Product
   alias CaHeoShop.Products
   alias CaHeoShop.Uploads
   alias CaHeoShopWeb.AdminLive
@@ -11,6 +12,8 @@ defmodule CaHeoShopWeb.ProductLive do
     socket =
       socket
       |> assign(:page_title, "Admin Products")
+      |> assign(:selected_product, %Product{})
+      |> assign(:product_form, to_form(Products.change_product(%Product{})))
       |> assign(:product_filters, %{
         "collection" => "ALL",
         "page" => 1,
@@ -24,7 +27,13 @@ defmodule CaHeoShopWeb.ProductLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    {:noreply, assign_product_index(socket, params)}
+    socket =
+      case socket.assigns.live_action do
+        :products -> assign_product_index(socket, params)
+        :product_new -> assign_product_new(socket)
+      end
+
+    {:noreply, socket}
   end
 
   @impl true
@@ -58,23 +67,53 @@ defmodule CaHeoShopWeb.ProductLive do
      )}
   end
 
+  def handle_event("validate_product", %{"product" => params}, socket) do
+    changeset =
+      socket.assigns.selected_product
+      |> Products.change_product(params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :product_form, to_form(changeset))}
+  end
+
+  def handle_event("save_product", %{"product" => params}, socket) do
+    case Products.create_product(params) do
+      {:ok, _product} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Product created successfully.")
+         |> push_navigate(to: ~p"/admin/products")}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, :product_form, to_form(changeset))}
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} variant={:admin}>
       <AdminLive.admin_shell current_scope={@current_scope} active={:products}>
-        <.products_page
-          products={@products}
-          page={@page}
-          per_page={@per_page}
-          total_count={@total_count}
-          total_pages={@total_pages}
-          from={@from}
-          to={@to}
-          collection={@collection}
-          q={@q}
-          collection_options={@collection_options}
-        />
+        <%= case @live_action do %>
+          <% :products -> %>
+            <.products_page
+              products={@products}
+              page={@page}
+              per_page={@per_page}
+              total_count={@total_count}
+              total_pages={@total_pages}
+              from={@from}
+              to={@to}
+              collection={@collection}
+              q={@q}
+              collection_options={@collection_options}
+            />
+          <% :product_new -> %>
+            <.product_form_page
+              form={@product_form}
+              collection_options={@product_form_collection_options}
+            />
+        <% end %>
       </AdminLive.admin_shell>
     </Layouts.app>
     """
@@ -100,7 +139,7 @@ defmodule CaHeoShopWeb.ProductLive do
     >
       <:actions>
         <.link navigate={~p"/admin/products/new"} class="btn btn-primary btn-sm">
-          <.icon name="hero-plus" class="size-4" /> Create product
+          <.icon name="hero-plus" class="size-4" /> New product
         </.link>
       </:actions>
     </AdminLive.page_header>
@@ -116,9 +155,10 @@ defmodule CaHeoShopWeb.ProductLive do
                   type="text"
                   name="q"
                   value={@q}
-                  class="input file-input-primary input-bordered join-item w-full min-w-0"
+                  placeholder="Search by Vietnamese or English name"
+                  class="input input-bordered join-item w-full min-w-0"
                 />
-                <button type="submit" class="btn btn-primary join-item ml-1">Search</button>
+                <button type="submit" class="btn btn-primary join-item">Search</button>
               </div>
             </label>
           </form>
@@ -173,7 +213,7 @@ defmodule CaHeoShopWeb.ProductLive do
           <table class="table">
             <thead>
               <tr>
-                <th class="w-64 min-w-64">Image</th>
+                <th class="w-64">Image</th>
                 <th>Product</th>
                 <th>Variants</th>
                 <th class="text-right">Actions</th>
@@ -184,7 +224,7 @@ defmodule CaHeoShopWeb.ProductLive do
                 <td colspan="4" class="py-12 text-center text-base-content/60">No products found.</td>
               </tr>
               <tr :for={product <- @products} class="hover:bg-base-200/40">
-                <td class="w-64 min-w-64">
+                <td class="w-64">
                   <%= if image_path = product_display_image_path(product) do %>
                     <img
                       src={image_path}
@@ -199,7 +239,8 @@ defmodule CaHeoShopWeb.ProductLive do
                 </td>
                 <td class="min-w-72">
                   <div class="space-y-1">
-                    <p class="font-medium">[EN]{product.name_en}</p>
+                    <p class="font-medium">{product.name_vi}</p>
+                    <p class="text-sm text-base-content/70">{product.name_en}</p>
                     <p class="text-xs text-base-content/60">/{product.slug}</p>
                     <p class="text-xs text-base-content/60">
                       Collection: {product_collection_label(product.collection)}
@@ -218,7 +259,8 @@ defmodule CaHeoShopWeb.ProductLive do
                       :for={variant <- product.product_variants}
                       class="rounded-box bg-base-200/60 px-3 py-2 text-sm"
                     >
-                      <p class="font-medium">[VN]{variant.variant_name_vi}</p>
+                      <p class="font-medium">{variant.variant_name_vi}</p>
+                      <p class="text-xs text-base-content/70">{variant.variant_name_en}</p>
                       <div class="mt-1 grid gap-1 text-xs text-base-content/70 md:grid-cols-3">
                         <span>Stock: {variant.stock_quantity}</span>
                         <span>Cost: {format_vnd(variant.production_cost)}</span>
@@ -265,6 +307,57 @@ defmodule CaHeoShopWeb.ProductLive do
     """
   end
 
+  attr :form, :any, required: true
+  attr :collection_options, :list, required: true
+
+  def product_form_page(assigns) do
+    ~H"""
+    <AdminLive.page_header
+      title="New product"
+      section="Ecommerce"
+      description="Create the base product record before adding variants or images."
+    />
+
+    <section class="mt-6 max-w-5xl">
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body">
+          <.form for={@form} id="product-form" phx-change="validate_product" phx-submit="save_product">
+            <div class="grid gap-4 lg:grid-cols-2">
+              <.input
+                field={@form[:collection_id]}
+                type="select"
+                label="Collection"
+                options={@collection_options}
+              />
+              <div></div>
+              <.input field={@form[:slug]} type="text" label="Slug" />
+              <div></div>
+              <.input field={@form[:name_vi]} type="text" label="Vietnamese name" />
+              <.input field={@form[:name_en]} type="text" label="English name" />
+              <.input
+                field={@form[:description_vi]}
+                type="textarea"
+                label="Vietnamese description"
+                class="textarea w-full lg:col-span-2"
+              />
+              <.input
+                field={@form[:description_en]}
+                type="textarea"
+                label="English description"
+                class="textarea w-full lg:col-span-2"
+              />
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+              <.link navigate={~p"/admin/products"} class="btn btn-ghost">Cancel</.link>
+              <button type="submit" class="btn btn-primary">Create product</button>
+            </div>
+          </.form>
+        </div>
+      </div>
+    </section>
+    """
+  end
+
   defp assign_product_index(socket, params) do
     product_index = Products.list_admin_products(params)
 
@@ -287,6 +380,13 @@ defmodule CaHeoShopWeb.ProductLive do
     })
   end
 
+  defp assign_product_new(socket) do
+    socket
+    |> assign(:selected_product, %Product{})
+    |> assign(:product_form, to_form(Products.change_product(%Product{})))
+    |> assign(:product_form_collection_options, product_form_collection_options())
+  end
+
   defp product_collection_options do
     [
       {"All collections", "ALL"},
@@ -294,6 +394,13 @@ defmodule CaHeoShopWeb.ProductLive do
     ] ++
       Enum.map(Collections.list_filterable_collections(), fn collection ->
         {product_collection_label(collection), Integer.to_string(collection.id)}
+      end)
+  end
+
+  defp product_form_collection_options do
+    [{"No collection", ""}] ++
+      Enum.map(Collections.list_filterable_collections(), fn collection ->
+        {product_collection_label(collection), collection.id}
       end)
   end
 

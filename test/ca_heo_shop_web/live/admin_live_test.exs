@@ -73,7 +73,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     {:ok, _view, html} = live(conn, ~p"/admin/products")
 
     assert html =~ "Products"
-    assert html =~ "Create product"
+    assert html =~ "New product"
     assert html =~ "Search products"
     assert html =~ "Rows per page"
     assert html =~ "Page"
@@ -97,13 +97,88 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     refute html =~ "Bulk action"
   end
 
-  test "renders product create, edit, and delete placeholders", %{conn: conn} do
+  test "renders new product page", %{conn: conn} do
+    collection_fixture(name_vi: "Bo suu tap", name_en: "Collection", nav_display_order: 0)
+
     {:ok, _new, new_html} = live(conn, ~p"/admin/products/new")
 
-    assert new_html =~ "Create Product"
-    assert new_html =~ "Image Placeholder"
-    assert new_html =~ "Cost"
+    assert new_html =~ "New product"
+    assert new_html =~ "Collection"
+    assert new_html =~ "Slug"
+    assert new_html =~ "Vietnamese name"
+    assert new_html =~ "English name"
+    assert new_html =~ "Vietnamese description"
+    assert new_html =~ "English description"
+    assert new_html =~ "Create product"
+    assert new_html =~ "No collection"
+    refute new_html =~ "stock_quantity"
+    refute new_html =~ "production_cost"
+    refute new_html =~ "selling_price"
+    refute new_html =~ "collection-image-form"
+  end
 
+  test "creates a product from the new product form", %{conn: conn} do
+    collection =
+      collection_fixture(name_vi: "Bo suu tap", name_en: "Collection", nav_display_order: 0)
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/new")
+
+    assert {:ok, _view, html} =
+             view
+             |> form("#product-form",
+               product: %{
+                 collection_id: Integer.to_string(collection.id),
+                 slug: "universal-phone-stand",
+                 name_vi: "Gia do dien thoai",
+                 name_en: "Universal Phone Stand",
+                 description_vi: "Mo ta san pham",
+                 description_en: "Product description"
+               }
+             )
+             |> render_submit()
+             |> follow_redirect(conn, ~p"/admin/products")
+
+    assert html =~ "Product created successfully."
+    assert html =~ "Gia do dien thoai"
+  end
+
+  test "validates the new product form and allows no collection", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/admin/products/new")
+
+    html =
+      view
+      |> form("#product-form",
+        product: %{
+          collection_id: "",
+          slug: "invalid slug",
+          name_vi: "",
+          name_en: ""
+        }
+      )
+      |> render_change()
+
+    assert html =~ "can&#39;t be blank"
+    assert html =~ "has invalid format"
+
+    assert {:ok, _view, redirected_html} =
+             view
+             |> form("#product-form",
+               product: %{
+                 collection_id: "",
+                 slug: "valid-phone-stand",
+                 name_vi: "Gia do",
+                 name_en: "Phone Stand",
+                 description_vi: "",
+                 description_en: ""
+               }
+             )
+             |> render_submit()
+             |> follow_redirect(conn, ~p"/admin/products")
+
+    assert redirected_html =~ "Product created successfully."
+  end
+
+  test "renders product edit and delete placeholders", %{conn: conn} do
     {:ok, _edit, edit_html} = live(conn, ~p"/admin/products/modular-desk-organizer/edit")
 
     assert edit_html =~ "Edit Product"
