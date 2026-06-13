@@ -8,6 +8,7 @@ defmodule CaHeoShop.Products do
 
   alias CaHeoShop.Collections.Collection
   alias CaHeoShop.Products.Product
+  alias CaHeoShop.Products.ProductImage
 
   def list_products do
     Repo.all(Product)
@@ -31,7 +32,26 @@ defmodule CaHeoShop.Products do
     |> Repo.all()
   end
 
+  def list_product_images(%Product{id: product_id}) do
+    list_product_images(product_id)
+  end
+
+  def list_product_images(product_id) do
+    ProductImage
+    |> where([image], image.product_id == ^product_id)
+    |> order_by([image], asc: image.display_order, asc: image.id)
+    |> Repo.all()
+  end
+
+  def list_product_images_without_thumbnail do
+    ProductImage
+    |> where([image], image.has_thumbnail == false)
+    |> order_by([image], asc: image.id)
+    |> Repo.all()
+  end
+
   def get_product!(id), do: Repo.get!(Product, id)
+  def get_product_image!(id), do: Repo.get!(ProductImage, id)
 
   def get_product_by_slug!(slug) when is_binary(slug) do
     Repo.get_by!(Product, slug: slug)
@@ -43,17 +63,54 @@ defmodule CaHeoShop.Products do
     |> Repo.insert()
   end
 
+  def create_product_image(attrs \\ %{}) do
+    %ProductImage{}
+    |> ProductImage.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def create_product_image_for_product(%Product{id: product_id}, attrs \\ %{}) do
+    attrs =
+      attrs
+      |> Map.new()
+      |> Map.put(:product_id, product_id)
+
+    create_product_image(attrs)
+  end
+
   def update_product(%Product{} = product, attrs) do
     product
     |> Product.changeset(attrs)
     |> Repo.update()
   end
 
+  def update_product_image(%ProductImage{} = product_image, attrs) do
+    product_image
+    |> ProductImage.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def mark_product_image_thumbnail_created(%ProductImage{} = product_image) do
+    update_product_image(product_image, %{has_thumbnail: true})
+  end
+
+  def mark_product_image_thumbnail_missing(%ProductImage{} = product_image) do
+    update_product_image(product_image, %{has_thumbnail: false})
+  end
+
   def delete_product(%Product{} = product) do
     Repo.delete(product)
   end
 
+  def delete_product_image(%ProductImage{} = product_image) do
+    Repo.delete(product_image)
+  end
+
   def change_product(%Product{} = product, attrs \\ %{}) do
     Product.changeset(product, attrs)
+  end
+
+  def change_product_image(%ProductImage{} = product_image, attrs \\ %{}) do
+    ProductImage.changeset(product_image, attrs)
   end
 end

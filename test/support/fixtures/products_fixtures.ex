@@ -44,4 +44,24 @@ defmodule CaHeoShop.ProductsFixtures do
 
     product
   end
+
+  def valid_product_image_attributes(product, attrs \\ %{}) do
+    attrs
+    |> Map.new()
+    |> Enum.into(%{
+      product_id: product.id,
+      filename: "/images/storefront/product-organizer.svg",
+      display_order: 0,
+      has_thumbnail: false
+    })
+  end
+
+  def product_image_fixture(product, attrs \\ %{}) do
+    {:ok, product_image} =
+      product
+      |> valid_product_image_attributes(attrs)
+      |> Products.create_product_image()
+
+    product_image
+  end
 end

@@ -11,9 +11,9 @@
 # and so on) as they will fail if something goes wrong.
 
 alias CaHeoShop.Collections.Collection
-alias CaHeoShop.ProductImages.ProductImage
 alias CaHeoShop.ProductVariants.ProductVariant
 alias CaHeoShop.Products.Product
+alias CaHeoShop.Products.ProductImage
 alias CaHeoShop.Repo
 
 upsert_collection = fn attrs ->
@@ -146,42 +146,50 @@ end
 
 upsert_product_image.(products["modular-desk-organizer"], %{
   filename: "/images/storefront/product-organizer.svg",
-  display_order: 0
+  display_order: 0,
+  has_thumbnail: false
 })
 
 upsert_product_image.(products["modular-desk-organizer"], %{
   filename: "/images/storefront/category-prints.svg",
-  display_order: 1
+  display_order: 1,
+  has_thumbnail: false
 })
 
 upsert_product_image.(products["starter-electronics-kit"], %{
   filename: "/images/storefront/product-kit.svg",
-  display_order: 0
+  display_order: 0,
+  has_thumbnail: false
 })
 
 upsert_product_image.(products["starter-electronics-kit"], %{
   filename: "/images/storefront/category-kits.svg",
-  display_order: 1
+  display_order: 1,
+  has_thumbnail: false
 })
 
 upsert_product_image.(products["custom-plant-holder"], %{
   filename: "/images/storefront/product-holder.svg",
-  display_order: 0
+  display_order: 0,
+  has_thumbnail: false
 })
 
 upsert_product_image.(products["custom-plant-holder"], %{
   filename: "/images/storefront/category-garden.svg",
-  display_order: 1
+  display_order: 1,
+  has_thumbnail: false
 })
 
 upsert_product_image.(products["prototype-print-request"], %{
   filename: "/images/storefront/custom-order.svg",
-  display_order: 0
+  display_order: 0,
+  has_thumbnail: false
 })
 
 upsert_product_image.(products["prototype-print-request"], %{
   filename: "/images/storefront/hero-workshop.svg",
-  display_order: 1
+  display_order: 1,
+  has_thumbnail: false
 })
 
 upsert_product_variant = fn product, attrs ->

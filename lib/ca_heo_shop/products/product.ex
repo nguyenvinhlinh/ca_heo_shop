@@ -3,6 +3,7 @@ defmodule CaHeoShop.Products.Product do
   import Ecto.Changeset
 
   alias CaHeoShop.Collections.Collection
+  alias CaHeoShop.Products.ProductImage
 
   schema "products" do
     field :slug, :string
@@ -12,6 +13,7 @@ defmodule CaHeoShop.Products.Product do
     field :description_en, :string
 
     belongs_to :collection, Collection
+    has_many :product_images, ProductImage
 
     timestamps(type: :utc_datetime)
   end
