@@ -14,5 +14,18 @@ Read the following documents before making changes:
 - research/002_online-store-design-guideline.md
 - research/003_daisyui-design-guideline.md
 
-- Task workflow: `agents/013_task-workflow.md`
-- List of tasks: `agents/014_task-workflow.md`
+- Task workflow: `agents/013_task-workflow.md`, Example:
+```
+[WORKING] ⏳ 028-01_upload-collection-images.md
+
+[TODO] ❌ 028-02_generate_collection_image_thumbnail_500x500px.md
+
+[DONE] ✅ [13/06/2026 03:04] 001_research-nexus-dashboard.md
+```
+    - Time can be extract with command `date -u +"%d/%m/%Y %H:%M"`.
+    - There are only three tags:
+        - `DONE`: icon ✅,
+        - `TODO`: icon ❌,
+        - `WORKING`: icon ⏳
+
+- List of tasks: `agents/014_tasks`
