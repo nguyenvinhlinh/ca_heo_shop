@@ -89,6 +89,31 @@ defmodule CaHeoShop.CollectionsTest do
       refute File.exists?(thumbnail_path)
     end
 
+    test "delete_collection_image/1 clears database fields and removes uploaded assets" do
+      collection = collection_fixture(image_filename: nil)
+      upload_path = write_temp_upload!("collection.jpg", "jpg-data")
+
+      assert {:ok, uploaded_collection} =
+               Collections.replace_collection_image(collection, %{
+                 path: upload_path,
+                 client_name: "collection.jpg"
+               })
+
+      assert {:ok, original_path} =
+               Uploads.collection_image_path(uploaded_collection.image_filename)
+
+      thumbnail_filename = Uploads.thumbnail_filename(uploaded_collection.image_filename)
+      assert {:ok, thumbnail_path} = Uploads.collection_image_path(thumbnail_filename)
+      File.write!(thumbnail_path, "thumb-data")
+
+      assert {:ok, cleared_collection} = Collections.delete_collection_image(uploaded_collection)
+
+      assert cleared_collection.image_filename == nil
+      assert cleared_collection.has_thumbnail == nil
+      refute File.exists?(original_path)
+      refute File.exists?(thumbnail_path)
+    end
+
     test "collection_display_image_path/1 prefers thumbnail when available" do
       assert Uploads.collection_display_image_path(%{
                image_filename: "42_example.jpg",

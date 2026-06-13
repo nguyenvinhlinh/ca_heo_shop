@@ -83,6 +83,19 @@ defmodule CaHeoShop.Collections do
     |> Repo.update()
   end
 
+  def delete_collection_image(%Collection{} = collection) do
+    image_filename = collection.image_filename
+
+    case clear_collection_image(collection) do
+      {:ok, updated_collection} ->
+        maybe_delete_collection_assets(image_filename)
+        {:ok, updated_collection}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:error, changeset}
+    end
+  end
+
   def mark_collection_thumbnail_generated(%Collection{} = collection) do
     collection
     |> Ecto.Changeset.change(has_thumbnail: true)

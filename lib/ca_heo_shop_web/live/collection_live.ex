@@ -100,6 +100,23 @@ defmodule CaHeoShopWeb.CollectionLive do
     end
   end
 
+  def handle_event("delete_collection_image", _params, socket) do
+    case Collections.delete_collection_image(socket.assigns.selected_collection) do
+      {:ok, collection} ->
+        {:noreply,
+         socket
+         |> assign(:selected_collection, collection)
+         |> assign(:collection_form, to_form(Collections.change_collection(collection)))
+         |> put_flash(:info, "Collection image deleted successfully.")}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply,
+         socket
+         |> assign(:collection_form, to_form(changeset))
+         |> put_flash(:error, "Unable to delete the collection image")}
+    end
+  end
+
   def handle_event("open_collection_delete", %{"slug" => slug}, socket) do
     {:noreply,
      socket
@@ -371,7 +388,7 @@ defmodule CaHeoShopWeb.CollectionLive do
       <aside class="grid gap-6">
         <div class="card bg-base-100 shadow-sm">
           <div class="card-body">
-            <h2 class="card-title text-base">Image Preview</h2>
+            <h2 class="card-title text-base">Image</h2>
             <div class="flex aspect-square items-center justify-center rounded-box border border-dashed border-base-300 bg-base-200">
               <%= if @collection.image_filename do %>
                 <img
@@ -383,9 +400,16 @@ defmodule CaHeoShopWeb.CollectionLive do
                 <.icon name="hero-photo" class="size-10 text-base-content/40" />
               <% end %>
             </div>
-            <p class="text-sm text-base-content/60">
-              Uploads replace the current collection image. Thumbnail generation runs after the upload is saved.
-            </p>
+            <div :if={@mode == :edit and @collection.image_filename} class="mt-4 flex justify-end">
+              <button
+                id="delete-collection-image-button"
+                class="btn btn-error btn-sm"
+                type="button"
+                phx-click="delete_collection_image"
+              >
+                <.icon name="hero-trash" class="size-4" /> Delete image
+              </button>
+            </div>
           </div>
         </div>
 

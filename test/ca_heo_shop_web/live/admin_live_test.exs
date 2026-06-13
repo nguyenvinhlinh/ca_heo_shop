@@ -288,6 +288,43 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert File.exists?(image_path)
   end
 
+  test "deletes a collection image from the edit page", %{conn: conn} do
+    collection = collection_fixture(image_filename: nil)
+
+    {:ok, uploaded_collection} =
+      Collections.replace_collection_image(collection, %{
+        path: write_temp_upload!("collection.jpg", "jpg-data"),
+        client_name: "collection.jpg"
+      })
+
+    {:ok, image_path} = Uploads.collection_image_path(uploaded_collection.image_filename)
+
+    {:ok, thumbnail_path} =
+      uploaded_collection.image_filename
+      |> Uploads.thumbnail_filename()
+      |> Uploads.collection_image_path()
+
+    File.write!(thumbnail_path, "thumb-data")
+
+    {:ok, view, html} = live(conn, ~p"/admin/collections/#{uploaded_collection.slug}/edit")
+
+    assert html =~ "Delete image"
+
+    html =
+      view
+      |> element("#delete-collection-image-button")
+      |> render_click()
+
+    assert html =~ "Collection image deleted successfully."
+    refute html =~ "Delete image"
+
+    updated_collection = Collections.get_collection!(uploaded_collection.id)
+    assert updated_collection.image_filename == nil
+    assert updated_collection.has_thumbnail == nil
+    refute File.exists?(image_path)
+    refute File.exists?(thumbnail_path)
+  end
+
   test "rejects unsupported collection image uploads", %{conn: conn} do
     collection = collection_fixture(image_filename: nil)
 
@@ -384,5 +421,11 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     end)
 
     :ok
+  end
+
+  defp write_temp_upload!(filename, contents) do
+    path = Path.join(System.tmp_dir!(), "#{System.unique_integer([:positive])}-#{filename}")
+    File.write!(path, contents)
+    path
   end
 end
