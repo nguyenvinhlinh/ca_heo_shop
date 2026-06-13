@@ -100,7 +100,10 @@ defmodule CaHeoShop.Products do
   def get_admin_product!(id) do
     Product
     |> Repo.get!(id)
-    |> Repo.preload(:collection)
+    |> Repo.preload([
+      :collection,
+      product_variants: product_variants_order_query()
+    ])
   end
 
   def get_product_by_slug!(slug) when is_binary(slug) do

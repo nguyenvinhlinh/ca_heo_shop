@@ -116,6 +116,46 @@ defmodule CaHeoShopWeb.AdminLiveTest do
         description_en: "Keeps desk cables organized."
       )
 
+    _first_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the dau",
+        variant_name_en: "First variant",
+        display_order: 0,
+        production_cost: 25_000,
+        selling_price: 50_000,
+        stock_quantity: 10,
+        image_filename: "first-variant.jpg"
+      })
+
+    _second_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the cung order",
+        variant_name_en: "Second same order",
+        display_order: 0,
+        production_cost: 30_000,
+        selling_price: 60_000,
+        stock_quantity: 0,
+        image_filename: nil
+      })
+
+    _later_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the sau",
+        variant_name_en: "Later variant",
+        display_order: 2,
+        production_cost: 40_000,
+        selling_price: 70_000,
+        stock_quantity: 5,
+        image_filename: "later-variant.jpg"
+      })
+
+    _other_product_variant =
+      product_variant_fixture(product_fixture(collection_id: nil), %{
+        variant_name_vi: "Bien the khac",
+        variant_name_en: "Other variant",
+        display_order: 0
+      })
+
     {:ok, _view, html} = live(conn, ~p"/admin/products/#{product.id}")
 
     assert html =~ "Product detail"
@@ -127,13 +167,62 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Linh kien ban"
     assert html =~ "Keeps desk cables organized."
     assert html =~ "Giu day gon gang tren ban lam viec."
+    assert html =~ "Product variants"
+    assert html =~ "New variant"
+    assert html =~ "First variant"
+    assert html =~ "Second same order"
+    assert html =~ "Later variant"
+    assert html =~ "25,000 VND"
+    assert html =~ "30,000 VND"
+    assert html =~ "40,000 VND"
+    assert html =~ "50,000 VND"
+    assert html =~ "60,000 VND"
+    assert html =~ "70,000 VND"
+    assert html =~ "10"
+    assert html =~ "0"
+    assert html =~ "5"
+    assert html =~ "first-variant.jpg"
+    assert html =~ "later-variant.jpg"
+    assert html =~ "—"
+    assert html =~ "Edit"
+    assert html =~ "Remove"
     assert html =~ "English description"
     assert html =~ "Vietnamese description"
+    refute html =~ "Other variant"
     {english_pos, _} = :binary.match(html, "English description")
     {vietnamese_pos, _} = :binary.match(html, "Vietnamese description")
     assert english_pos < vietnamese_pos
+    {content_pos, _} = :binary.match(html, "Product content")
+    {variants_pos, _} = :binary.match(html, "Product variants")
+    assert content_pos < variants_pos
     refute html =~ "Create product"
     refute html =~ "No variants"
+
+    {first_pos, _} = :binary.match(html, "First variant")
+    {second_pos, _} = :binary.match(html, "Second same order")
+    {later_pos, _} = :binary.match(html, "Later variant")
+    assert first_pos < second_pos
+    assert second_pos < later_pos
+  end
+
+  test "renders admin product detail empty variants state", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "no-variants",
+        name_vi: "San pham khong co bien the",
+        name_en: "Product without variants",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    {:ok, _view, html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    assert html =~ "Product variants"
+    assert html =~ "New variant"
+    assert html =~ "No variants"
+    refute html =~ "Edit"
+    refute html =~ "Remove"
   end
 
   test "renders new product page", %{conn: conn} do

@@ -286,6 +286,60 @@ defmodule CaHeoShop.ProductsTest do
     end
   end
 
+  describe "admin product detail loading" do
+    test "get_admin_product!/1 preloads collection and ordered product variants" do
+      collection =
+        collection_fixture(name_vi: "Bo suu tap A", name_en: "Collection A", nav_display_order: 0)
+
+      product =
+        product_fixture(
+          collection: collection,
+          slug: "detail-product",
+          name_vi: "San pham chi tiet"
+        )
+
+      first_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the dau",
+          variant_name_en: "First variant",
+          display_order: 0
+        })
+
+      second_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the cung",
+          variant_name_en: "Second same order",
+          display_order: 0
+        })
+
+      later_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the sau",
+          variant_name_en: "Later variant",
+          display_order: 2
+        })
+
+      _other_product_variant =
+        product_variant_fixture(product_fixture(collection_id: nil), %{
+          variant_name_vi: "Bien the khac",
+          variant_name_en: "Other",
+          display_order: 0
+        })
+
+      loaded_product = Products.get_admin_product!(product.id)
+
+      assert Ecto.assoc_loaded?(loaded_product.collection)
+      assert Ecto.assoc_loaded?(loaded_product.product_variants)
+      assert loaded_product.collection.id == collection.id
+
+      assert Enum.map(loaded_product.product_variants, & &1.id) == [
+               first_variant.id,
+               second_variant.id,
+               later_variant.id
+             ]
+    end
+  end
+
   describe "product images" do
     test "change_product_image/2 requires product_id and filename" do
       changeset = Products.change_product_image(%ProductImage{}, %{})

@@ -421,6 +421,65 @@ defmodule CaHeoShopWeb.ProductLive do
           </div>
         </div>
       </div>
+
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body gap-5">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 class="card-title text-base">Product variants</h2>
+              <p class="text-sm text-base-content/60">
+                Read-only variants for the current product, ordered for admin review.
+              </p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" disabled>New variant</button>
+          </div>
+
+          <div class="overflow-auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th class="w-20">Order</th>
+                  <th>Variant VI</th>
+                  <th>Variant EN</th>
+                  <th>Cost</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Image filename</th>
+                  <th>Updated</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :if={@product.product_variants == []}>
+                  <td colspan="9" class="py-12 text-center text-base-content/60">No variants</td>
+                </tr>
+                <tr :for={variant <- @product.product_variants} class="hover:bg-base-200/40">
+                  <td class="align-top">{variant.display_order}</td>
+                  <td class="align-top font-medium">{variant.variant_name_vi}</td>
+                  <td class="align-top text-base-content/70">{variant.variant_name_en}</td>
+                  <td class="align-top">{format_vnd(variant.production_cost)}</td>
+                  <td class="align-top">{format_vnd(variant.selling_price)}</td>
+                  <td class="align-top">{variant.stock_quantity}</td>
+                  <td class="align-top">{display_image_filename(variant.image_filename)}</td>
+                  <td class="align-top">
+                    {format_datetime(variant.updated_at || variant.inserted_at)}
+                  </td>
+                  <td class="align-top text-right">
+                    <div class="join">
+                      <button type="button" class="btn btn-xs join-item" disabled>
+                        Edit
+                      </button>
+                      <button type="button" class="btn btn-error btn-xs join-item" disabled>
+                        Remove
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </section>
     """
   end
@@ -557,6 +616,9 @@ defmodule CaHeoShopWeb.ProductLive do
 
   defp long_text_or_placeholder(_value), do: "No description"
 
+  defp display_image_filename(value) when is_binary(value) and value != "", do: value
+  defp display_image_filename(_value), do: "—"
+
   defp primary_product_name(product) do
     cond do
       present?(product.name_vi) -> product.name_vi
@@ -589,5 +651,4 @@ defmodule CaHeoShopWeb.ProductLive do
   end
 
   defp format_datetime(_value), do: "-"
-
 end
