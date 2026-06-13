@@ -213,6 +213,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     refute html =~ "/images/storefront/other-product.jpg"
     assert html =~ "Product variants"
     assert html =~ "New variant"
+    assert html =~ ~s(phx-click="open-edit-variant-dialog")
     refute html =~ "New product variant"
     assert html =~ "First variant"
     assert html =~ "Second same order"
@@ -533,9 +534,49 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Image filename"
     assert html =~ "Display order"
     assert html =~ "Create variant"
-    assert html =~ ~s(id="close-new-variant-dialog")
+    assert html =~ "Cancel"
     assert html =~ ~s(name="product_variant[display_order]")
     assert html =~ ~s(value="5")
+  end
+
+  test "clicking edit opens the dialog with existing variant values", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "edit-variant-dialog",
+        name_vi: "San pham sua bien the",
+        name_en: "Edit variant dialog product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "PLA Tim",
+        variant_name_en: "Purple PLA",
+        production_cost: 12_000,
+        selling_price: 35_000,
+        stock_quantity: 9,
+        image_filename: "purple.jpg",
+        display_order: 2
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    html =
+      view
+      |> element(~s(button[phx-click="open-edit-variant-dialog"][phx-value-id="#{variant.id}"]))
+      |> render_click()
+
+    assert html =~ "Edit product variant"
+    assert html =~ "Update variant"
+    assert html =~ ~s(value="PLA Tim")
+    assert html =~ ~s(value="Purple PLA")
+    assert html =~ ~s(value="12000")
+    assert html =~ ~s(value="35000")
+    assert html =~ ~s(value="9")
+    assert html =~ ~s(value="purple.jpg")
+    assert html =~ ~s(value="2")
   end
 
   test "creates a product variant from the detail dialog and ignores submitted product_id", %{
@@ -592,6 +633,73 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert CaHeoShop.Products.list_product_variants(other_product) == []
   end
 
+  test "updates a product variant from the detail dialog and ignores submitted product_id", %{
+    conn: conn
+  } do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "update-variant",
+        name_vi: "San pham cap nhat bien the",
+        name_en: "Update variant product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    other_product = product_fixture(collection_id: nil, slug: "other-update-parent")
+
+    variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "PLA Cam",
+        variant_name_en: "Orange PLA",
+        production_cost: 11_000,
+        selling_price: 31_000,
+        stock_quantity: 4,
+        image_filename: "orange.jpg",
+        display_order: 1
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element(~s(button[phx-click="open-edit-variant-dialog"][phx-value-id="#{variant.id}"]))
+      |> render_click()
+
+    html =
+      render_submit(view, "save-variant", %{
+        "product_variant" => %{
+          "product_id" => Integer.to_string(other_product.id),
+          "variant_name_vi" => "PLA Cam Moi",
+          "variant_name_en" => "Updated Orange PLA",
+          "production_cost" => "17000",
+          "selling_price" => "52000",
+          "stock_quantity" => "6",
+          "image_filename" => "",
+          "display_order" => "3"
+        }
+      })
+
+    assert html =~ "Product variant updated successfully."
+    refute html =~ "Edit product variant"
+    assert html =~ "PLA Cam Moi"
+    assert html =~ "Updated Orange PLA"
+    assert html =~ "17,000 VND"
+    assert html =~ "52,000 VND"
+    assert html =~ "6"
+    assert html =~ "—"
+
+    updated_variant = CaHeoShop.Products.get_product_variant!(variant.id)
+    assert updated_variant.product_id == product.id
+    assert updated_variant.variant_name_vi == "PLA Cam Moi"
+    assert updated_variant.variant_name_en == "Updated Orange PLA"
+    assert updated_variant.production_cost == 17_000
+    assert updated_variant.selling_price == 52_000
+    assert updated_variant.stock_quantity == 6
+    assert updated_variant.display_order == 3
+    assert updated_variant.image_filename == nil
+  end
+
   test "invalid product variant submit keeps the dialog open and shows errors", %{conn: conn} do
     product =
       product_fixture(
@@ -629,6 +737,87 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "can&#39;t be blank"
     assert html =~ "must be greater than or equal to 0"
     assert CaHeoShop.Products.list_product_variants(product) == []
+  end
+
+  test "invalid product variant edit keeps the dialog open and preserves existing data", %{
+    conn: conn
+  } do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "invalid-edit-variant",
+        name_vi: "San pham sua loi",
+        name_en: "Invalid edit variant product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "PLA Nau",
+        variant_name_en: "Brown PLA",
+        selling_price: 25_000
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element(~s(button[phx-click="open-edit-variant-dialog"][phx-value-id="#{variant.id}"]))
+      |> render_click()
+
+    html =
+      view
+      |> form("#product-variant-form",
+        product_variant: %{
+          variant_name_vi: "",
+          variant_name_en: "",
+          production_cost: "-1",
+          selling_price: "",
+          stock_quantity: "-1",
+          image_filename: "",
+          display_order: "-1"
+        }
+      )
+      |> render_submit()
+
+    assert html =~ "Edit product variant"
+    assert html =~ "can&#39;t be blank"
+    assert html =~ "must be greater than or equal to 0"
+
+    unchanged_variant = CaHeoShop.Products.get_product_variant!(variant.id)
+    assert unchanged_variant.variant_name_vi == "PLA Nau"
+    assert unchanged_variant.variant_name_en == "Brown PLA"
+    assert unchanged_variant.selling_price == 25_000
+  end
+
+  test "editing a foreign product variant is ignored safely", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "safe-edit-variant",
+        name_vi: "San pham an toan sua",
+        name_en: "Safe edit variant product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    foreign_variant =
+      product_variant_fixture(product_fixture(collection_id: nil), %{
+        variant_name_vi: "PLA La",
+        variant_name_en: "Foreign PLA"
+      })
+
+    {:ok, view, html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    refute html =~ "Edit product variant"
+
+    html =
+      view
+      |> render_click("open-edit-variant-dialog", %{"id" => Integer.to_string(foreign_variant.id)})
+
+    assert html =~ "Product variant not found."
+    refute html =~ "Edit product variant"
   end
 
   test "renders new product page", %{conn: conn} do

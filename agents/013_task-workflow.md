@@ -1,6 +1,6 @@
 [DONE] ✅ [13/06/2026 20:51] 039-06_admin_create_product_variant_dialog.md
 
-[backlog] 039-07_admin_edit_product_variant_dialog.md
+[DONE] ✅ [13/06/2026 21:00] 039-07_admin_edit_product_variant_dialog.md
 
 [backlog] 039-08_admin_delete_product_variant.md
 
