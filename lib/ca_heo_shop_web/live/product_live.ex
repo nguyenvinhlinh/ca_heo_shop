@@ -152,6 +152,16 @@ defmodule CaHeoShopWeb.ProductLive do
     {:noreply, close_variant_dialog(socket)}
   end
 
+  def handle_event("delete-product-variant", %{"id" => id}, socket) do
+    case find_product_variant(socket.assigns.selected_product, id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Product variant not found.")}
+
+      product_variant ->
+        delete_product_variant(socket, product_variant)
+    end
+  end
+
   def handle_event("validate-variant", %{"product_variant" => params}, socket) do
     changeset =
       socket
@@ -591,7 +601,13 @@ defmodule CaHeoShopWeb.ProductLive do
                         >
                           Edit
                         </button>
-                        <button type="button" class="btn btn-error btn-xs join-item" disabled>
+                        <button
+                          type="button"
+                          class="btn btn-error btn-xs join-item"
+                          phx-click="delete-product-variant"
+                          phx-value-id={variant.id}
+                          data-confirm="Remove this product variant?"
+                        >
                           Remove
                         </button>
                       </div>
@@ -1132,6 +1148,41 @@ defmodule CaHeoShopWeb.ProductLive do
 
   defp find_product_variant(product, variant_id) do
     Enum.find(product.product_variants, &(to_string(&1.id) == to_string(variant_id)))
+  end
+
+  defp delete_product_variant(socket, %ProductVariant{} = product_variant) do
+    case Products.delete_product_variant(product_variant) do
+      {:ok, _deleted_variant} ->
+        refreshed_product = Products.get_admin_product!(socket.assigns.selected_product.id)
+
+        socket =
+          socket
+          |> assign(:selected_product, refreshed_product)
+          |> assign(
+            :selected_product_image,
+            refreshed_selected_product_image(
+              refreshed_product.product_images,
+              socket.assigns.selected_product_image
+            )
+          )
+          |> maybe_close_deleted_variant_dialog(product_variant)
+          |> put_flash(:info, "Product variant removed successfully.")
+
+        {:noreply, socket}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Could not remove product variant.")}
+    end
+  end
+
+  defp maybe_close_deleted_variant_dialog(socket, %ProductVariant{id: deleted_id}) do
+    case socket.assigns.selected_product_variant do
+      %ProductVariant{id: selected_id} when selected_id == deleted_id ->
+        close_variant_dialog(socket)
+
+      _other ->
+        socket
+    end
   end
 
   defp product_image_thumbnail_path(%{filename: filename, has_thumbnail: true})

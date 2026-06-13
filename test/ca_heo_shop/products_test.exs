@@ -848,6 +848,21 @@ defmodule CaHeoShop.ProductsTest do
       end
     end
 
+    test "delete_product_variant/1 does not delete product or other variants" do
+      product = product_fixture()
+
+      removed_variant =
+        product_variant_fixture(product, %{variant_name_vi: "Xoa", variant_name_en: "Remove"})
+
+      kept_variant =
+        product_variant_fixture(product, %{variant_name_vi: "Giu", variant_name_en: "Keep"})
+
+      assert {:ok, deleted_variant} = Products.delete_product_variant(removed_variant)
+      assert deleted_variant.id == removed_variant.id
+      assert Products.get_product!(product.id).id == product.id
+      assert Products.list_product_variants(product) == [kept_variant]
+    end
+
     test "change_product_variant/1 returns a changeset" do
       product = product_fixture()
       product_variant = product_variant_fixture(product)

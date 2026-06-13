@@ -2,7 +2,7 @@
 
 [DONE] ✅ [13/06/2026 21:00] 039-07_admin_edit_product_variant_dialog.md
 
-[backlog] 039-08_admin_delete_product_variant.md
+[DONE] ✅ [13/06/2026 21:09] 039-08_admin_delete_product_variant.md
 
 [backlog] 039-09_admin_product_variant_drag_drop_ordering.md
 

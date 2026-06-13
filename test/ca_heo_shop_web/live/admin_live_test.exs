@@ -232,6 +232,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "—"
     assert html =~ "Edit"
     assert html =~ "Remove"
+    assert html =~ ~s(phx-click="delete-product-variant")
+    assert html =~ ~s(data-confirm="Remove this product variant?")
     assert html =~ "English description"
     assert html =~ "Vietnamese description"
     refute html =~ "Other variant"
@@ -818,6 +820,145 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert html =~ "Product variant not found."
     refute html =~ "Edit product variant"
+  end
+
+  test "deletes a product variant from the detail page", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "delete-variant",
+        name_vi: "San pham xoa bien the",
+        name_en: "Delete variant product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    removed_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "PLA Hong",
+        variant_name_en: "Pink PLA"
+      })
+
+    kept_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "PLA Xanh La",
+        variant_name_en: "Green PLA"
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    html =
+      view
+      |> render_click("delete-product-variant", %{"id" => Integer.to_string(removed_variant.id)})
+
+    assert html =~ "Product variant removed successfully."
+    refute html =~ "PLA Hong"
+    refute html =~ "Pink PLA"
+    assert html =~ "PLA Xanh La"
+    assert html =~ "Green PLA"
+
+    assert_raise Ecto.NoResultsError, fn ->
+      CaHeoShop.Products.get_product_variant!(removed_variant.id)
+    end
+
+    assert Enum.map(CaHeoShop.Products.list_product_variants(product), & &1.id) == [
+             kept_variant.id
+           ]
+  end
+
+  test "deleting the last product variant shows empty state", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "delete-last-variant",
+        name_vi: "San pham xoa bien the cuoi",
+        name_en: "Delete last variant product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "PLA Bac",
+        variant_name_en: "Silver PLA"
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    html =
+      view
+      |> render_click("delete-product-variant", %{"id" => Integer.to_string(variant.id)})
+
+    assert html =~ "Product variant removed successfully."
+    assert html =~ "No variants"
+    assert html =~ "New variant"
+  end
+
+  test "deleting the variant being edited closes the dialog safely", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "delete-editing-variant",
+        name_vi: "San pham xoa khi dang sua",
+        name_en: "Delete editing variant product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "PLA Trang Sua",
+        variant_name_en: "White Edit PLA"
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element(~s(button[phx-click="open-edit-variant-dialog"][phx-value-id="#{variant.id}"]))
+      |> render_click()
+
+    html =
+      view
+      |> render_click("delete-product-variant", %{"id" => Integer.to_string(variant.id)})
+
+    assert html =~ "Product variant removed successfully."
+    refute html =~ "Edit product variant"
+    assert html =~ "No variants"
+  end
+
+  test "deleting a foreign product variant is rejected safely", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "safe-delete-variant",
+        name_vi: "San pham an toan xoa",
+        name_en: "Safe delete variant product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    local_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "PLA Noi Bo",
+        variant_name_en: "Local PLA"
+      })
+
+    foreign_variant =
+      product_variant_fixture(product_fixture(collection_id: nil), %{
+        variant_name_vi: "PLA Ngoai",
+        variant_name_en: "Foreign PLA"
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    html =
+      view
+      |> render_click("delete-product-variant", %{"id" => Integer.to_string(foreign_variant.id)})
+
+    assert html =~ "Product variant not found."
+    assert CaHeoShop.Products.get_product_variant!(foreign_variant.id).id == foreign_variant.id
+    assert CaHeoShop.Products.get_product_variant!(local_variant.id).id == local_variant.id
   end
 
   test "renders new product page", %{conn: conn} do
