@@ -4,6 +4,9 @@
 
 [BACKLOG] 032_create-product-variants-table.md
 
+[Backlog] 033_update-users-with-role-fullname.md
+
+[backlog] 034_allow-login-w-username-and-email.md
 [DONE] ✅ [13/06/2026 05:23] 028-03_delete_collection_image.md
 
 [DONE] ✅ 028-04_truncate_collection_image_file_name.md
