@@ -116,7 +116,7 @@ defmodule CaHeoShopWeb.ProductLive do
                   type="text"
                   name="q"
                   value={@q}
-                  class="input input-bordered join-item w-full min-w-0"
+                  class="input file-input-primary input-bordered join-item w-full min-w-0"
                 />
                 <button type="submit" class="btn btn-primary join-item ml-1">Search</button>
               </div>

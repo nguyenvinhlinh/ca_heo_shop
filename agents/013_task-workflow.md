@@ -1,5 +1,4 @@
-[DONE] ✅ [13/06/2026 16:59] 037_add_bilingual_variant_names_to_product_variants.md
-
+[todo] 038_create-product-page.md
 
 
 [Backlog] 033_update-users-with-role-fullname.md
@@ -7,6 +6,8 @@
 [backlog] 034_allow-login-w-username-and-email.md
 
 [backlog] 035_add-role-based-route-authorization.md
+
+[DONE] ✅ [13/06/2026 16:59] 037_add_bilingual_variant_names_to_product_variants.md
 
 [DONE] ✅ [13/06/2026 15:57] 036-admin_product_index_page.md
 
