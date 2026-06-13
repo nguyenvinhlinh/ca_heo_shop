@@ -130,6 +130,30 @@ defmodule CaHeoShopWeb.ProductLive do
     end
   end
 
+  def handle_event("reorder-product-variants", %{"ids" => ordered_variant_ids}, socket) do
+    product = socket.assigns.selected_product
+
+    case Products.reorder_product_variants(product.id, ordered_variant_ids) do
+      {:ok, reordered_product_variants} ->
+        updated_product = %{product | product_variants: reordered_product_variants}
+
+        {:noreply,
+         socket
+         |> assign(:selected_product, updated_product)
+         |> assign(
+           :selected_product_variant,
+           refreshed_selected_product_variant(
+             reordered_product_variants,
+             socket.assigns.selected_product_variant
+           )
+         )
+         |> put_flash(:info, "Product variant order updated.")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Could not reorder product variants.")}
+    end
+  end
+
   def handle_event("open-new-variant-dialog", _params, socket) do
     {:noreply, open_variant_dialog(socket)}
   end
@@ -576,12 +600,31 @@ defmodule CaHeoShopWeb.ProductLive do
                     <th class="text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr :if={@product.product_variants == []}>
-                    <td colspan="9" class="py-12 text-center text-base-content/60">No variants</td>
-                  </tr>
-                  <tr :for={variant <- @product.product_variants} class="hover:bg-base-200/40">
-                    <td class="align-top">{variant.display_order}</td>
+                <tbody
+                  :if={@product.product_variants != []}
+                  id="product-variants-sortable"
+                  phx-hook="ProductVariantSortable"
+                >
+                  <tr
+                    :for={variant <- @product.product_variants}
+                    id={"product-variant-#{variant.id}"}
+                    data-item-id={variant.id}
+                    class="hover:bg-base-200/40"
+                  >
+                    <td class="align-top">
+                      <div class="flex items-center gap-2">
+                        <span>{variant.display_order}</span>
+                        <button
+                          type="button"
+                          draggable="true"
+                          data-role="drag-handle"
+                          class="btn btn-secondary btn-xs cursor-grab active:cursor-grabbing"
+                          aria-label={"Drag #{variant.variant_name_en}"}
+                        >
+                          Drag
+                        </button>
+                      </div>
+                    </td>
                     <td class="align-top font-medium">
                       {variant.variant_name_vi}
                     </td>
@@ -612,6 +655,11 @@ defmodule CaHeoShopWeb.ProductLive do
                         </button>
                       </div>
                     </td>
+                  </tr>
+                </tbody>
+                <tbody :if={@product.product_variants == []}>
+                  <tr :if={@product.product_variants == []}>
+                    <td colspan="9" class="py-12 text-center text-base-content/60">No variants</td>
                   </tr>
                 </tbody>
               </table>
@@ -850,7 +898,7 @@ defmodule CaHeoShopWeb.ProductLive do
             <div
               :for={product_image <- @product_images}
               id={"product-image-#{product_image.id}"}
-              data-image-id={product_image.id}
+              data-item-id={product_image.id}
               class={[
                 "flex items-start gap-3 rounded-box border p-3 transition-colors",
                 selected_product_image?(product_image, @selected_image) &&
@@ -1042,6 +1090,13 @@ defmodule CaHeoShopWeb.ProductLive do
 
   defp refreshed_selected_product_image(product_images, _selected_image),
     do: List.first(product_images)
+
+  defp refreshed_selected_product_variant(product_variants, %{id: selected_variant_id}) do
+    Enum.find(product_variants, &(&1.id == selected_variant_id)) || List.first(product_variants)
+  end
+
+  defp refreshed_selected_product_variant(product_variants, _selected_variant),
+    do: List.first(product_variants)
 
   defp open_variant_dialog(socket), do: open_variant_dialog(socket, :new)
 

@@ -205,6 +205,45 @@ defmodule CaHeoShop.Products do
   def reorder_product_images(_product_id, _ordered_image_ids),
     do: {:error, :invalid_product_image_order}
 
+  def reorder_product_variants(product_id, ordered_variant_ids)
+      when is_list(ordered_variant_ids) do
+    product_variants = list_product_variants(product_id)
+
+    with {:ok, normalized_ids} <- normalize_variant_ids(ordered_variant_ids),
+         :ok <- validate_product_variant_order(product_variants, normalized_ids) do
+      product_variants_by_id = Map.new(product_variants, &{&1.id, &1})
+
+      normalized_ids
+      |> Enum.with_index()
+      |> Enum.reduce(Multi.new(), fn {variant_id, display_order}, multi ->
+        Multi.update(
+          multi,
+          {:product_variant, variant_id},
+          ProductVariant.changeset(product_variants_by_id[variant_id], %{
+            display_order: display_order
+          })
+        )
+      end)
+      |> Multi.run(:product_variants, fn repo, _changes ->
+        {:ok,
+         product_id
+         |> ordered_product_variants_query()
+         |> repo.all()}
+      end)
+      |> Repo.transaction()
+      |> case do
+        {:ok, %{product_variants: reordered_product_variants}} ->
+          {:ok, reordered_product_variants}
+
+        {:error, _operation, _reason, _changes} ->
+          {:error, :could_not_reorder_product_variants}
+      end
+    end
+  end
+
+  def reorder_product_variants(_product_id, _ordered_variant_ids),
+    do: {:error, :invalid_product_variant_order}
+
   def mark_product_image_thumbnail_created(%ProductImage{} = product_image) do
     update_product_image(product_image, %{has_thumbnail: true})
   end
@@ -332,6 +371,16 @@ defmodule CaHeoShop.Products do
     end)
   end
 
+  defp normalize_variant_ids(ordered_variant_ids) do
+    ordered_variant_ids
+    |> Enum.reduce_while({:ok, []}, fn variant_id, {:ok, ids} ->
+      case normalize_positive_integer(variant_id, nil) do
+        nil -> {:halt, {:error, :invalid_product_variant_order}}
+        normalized_id -> {:cont, {:ok, ids ++ [normalized_id]}}
+      end
+    end)
+  end
+
   defp validate_product_image_order(product_images, ordered_image_ids) do
     existing_ids = Enum.map(product_images, & &1.id)
 
@@ -350,10 +399,34 @@ defmodule CaHeoShop.Products do
     end
   end
 
+  defp validate_product_variant_order(product_variants, ordered_variant_ids) do
+    existing_ids = Enum.map(product_variants, & &1.id)
+
+    cond do
+      length(existing_ids) != length(ordered_variant_ids) ->
+        {:error, :invalid_product_variant_order}
+
+      length(Enum.uniq(ordered_variant_ids)) != length(ordered_variant_ids) ->
+        {:error, :invalid_product_variant_order}
+
+      MapSet.new(existing_ids) != MapSet.new(ordered_variant_ids) ->
+        {:error, :invalid_product_variant_order}
+
+      true ->
+        :ok
+    end
+  end
+
   defp ordered_product_images_query(product_id) do
     ProductImage
     |> where([image], image.product_id == ^product_id)
     |> order_by([image], asc: image.display_order, asc: image.id)
+  end
+
+  defp ordered_product_variants_query(product_id) do
+    ProductVariant
+    |> where([variant], variant.product_id == ^product_id)
+    |> order_by([variant], asc: variant.display_order, asc: variant.inserted_at)
   end
 
   defp product_images_order_query do

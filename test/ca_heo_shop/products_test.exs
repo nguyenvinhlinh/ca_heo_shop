@@ -784,6 +784,126 @@ defmodule CaHeoShop.ProductsTest do
       assert Products.list_product_variants(product) == [first, second]
     end
 
+    test "reorder_product_variants/2 updates display_order sequentially and accepts string ids" do
+      product = product_fixture()
+
+      first_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the dau",
+          variant_name_en: "First",
+          display_order: 0
+        })
+
+      second_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the hai",
+          variant_name_en: "Second",
+          display_order: 1
+        })
+
+      third_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the ba",
+          variant_name_en: "Third",
+          display_order: 2
+        })
+
+      assert {:ok, reordered_variants} =
+               Products.reorder_product_variants(product.id, [
+                 Integer.to_string(third_variant.id),
+                 Integer.to_string(first_variant.id),
+                 Integer.to_string(second_variant.id)
+               ])
+
+      assert Enum.map(reordered_variants, &{&1.id, &1.display_order}) == [
+               {third_variant.id, 0},
+               {first_variant.id, 1},
+               {second_variant.id, 2}
+             ]
+
+      assert Enum.map(Products.list_product_variants(product), &{&1.id, &1.display_order}) == [
+               {third_variant.id, 0},
+               {first_variant.id, 1},
+               {second_variant.id, 2}
+             ]
+    end
+
+    test "reorder_product_variants/2 rejects foreign variant ids and keeps the original order" do
+      product = product_fixture()
+      other_product = product_fixture()
+
+      first_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the dau",
+          variant_name_en: "First",
+          display_order: 0
+        })
+
+      second_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the hai",
+          variant_name_en: "Second",
+          display_order: 1
+        })
+
+      foreign_variant =
+        product_variant_fixture(other_product, %{
+          variant_name_vi: "Bien the ngoai",
+          variant_name_en: "Foreign",
+          display_order: 0
+        })
+
+      assert {:error, :invalid_product_variant_order} =
+               Products.reorder_product_variants(product.id, [
+                 second_variant.id,
+                 foreign_variant.id
+               ])
+
+      assert Enum.map(Products.list_product_variants(product), &{&1.id, &1.display_order}) == [
+               {first_variant.id, 0},
+               {second_variant.id, 1}
+             ]
+    end
+
+    test "reorder_product_variants/2 rejects unknown, missing, and duplicate ids" do
+      product = product_fixture()
+
+      first_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the dau",
+          variant_name_en: "First",
+          display_order: 0
+        })
+
+      second_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the hai",
+          variant_name_en: "Second",
+          display_order: 1
+        })
+
+      assert {:error, :invalid_product_variant_order} =
+               Products.reorder_product_variants(product.id, [
+                 second_variant.id,
+                 first_variant.id,
+                 -1
+               ])
+
+      assert {:error, :invalid_product_variant_order} =
+               Products.reorder_product_variants(product.id, [second_variant.id])
+
+      assert {:error, :invalid_product_variant_order} =
+               Products.reorder_product_variants(product.id, [
+                 second_variant.id,
+                 second_variant.id
+               ])
+
+      assert Enum.map(Products.list_product_variants(product), &{&1.id, &1.display_order}) == [
+               {first_variant.id, 0},
+               {second_variant.id, 1}
+             ]
+    end
+
     test "next_product_variant_display_order/1 returns 0 when product has no variants" do
       product = product_fixture()
 

@@ -26,6 +26,75 @@ import {hooks as colocatedHooks} from "phoenix-colocated/ca_heo_shop"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+
+function createSortableHook(itemSelector, eventName) {
+  return {
+    mounted() {
+      this.draggedItem = null
+
+      this.onDragStart = event => {
+        const handle = event.target.closest("[data-role='drag-handle']")
+        const item = handle?.closest(itemSelector)
+
+        if (!item || this.el.children.length < 2) return
+
+        this.draggedItem = item
+        item.classList.add("opacity-60")
+        event.dataTransfer.effectAllowed = "move"
+      }
+
+      this.onDragOver = event => {
+        if (!this.draggedItem) return
+
+        const item = event.target.closest(itemSelector)
+
+        if (!item || item === this.draggedItem) return
+
+        event.preventDefault()
+
+        const {top, height} = item.getBoundingClientRect()
+        const shouldInsertBefore = event.clientY < top + height / 2
+
+        if (shouldInsertBefore) {
+          this.el.insertBefore(this.draggedItem, item)
+        } else {
+          this.el.insertBefore(this.draggedItem, item.nextElementSibling)
+        }
+      }
+
+      this.onDrop = event => {
+        if (!this.draggedItem) return
+
+        event.preventDefault()
+
+        const orderedIds = [...this.el.querySelectorAll(itemSelector)]
+          .map(item => item.dataset.itemId)
+
+        this.pushEvent(eventName, {ids: orderedIds})
+      }
+
+      this.onDragEnd = () => {
+        if (!this.draggedItem) return
+
+        this.draggedItem.classList.remove("opacity-60")
+        this.draggedItem = null
+      }
+
+      this.el.addEventListener("dragstart", this.onDragStart)
+      this.el.addEventListener("dragover", this.onDragOver)
+      this.el.addEventListener("drop", this.onDrop)
+      this.el.addEventListener("dragend", this.onDragEnd)
+    },
+
+    destroyed() {
+      this.el.removeEventListener("dragstart", this.onDragStart)
+      this.el.removeEventListener("dragover", this.onDragOver)
+      this.el.removeEventListener("drop", this.onDrop)
+      this.el.removeEventListener("dragend", this.onDragEnd)
+    },
+  }
+}
+
 const hooks = {
   CopyToClipboard: {
     mounted() {
@@ -49,72 +118,8 @@ const hooks = {
     },
   },
 
-  ProductImageSortable: {
-    mounted() {
-      this.draggedItem = null
-
-      this.onDragStart = event => {
-        const handle = event.target.closest("[data-role='drag-handle']")
-        const item = handle?.closest("[data-image-id]")
-
-        if (!item || this.el.children.length < 2) return
-
-        this.draggedItem = item
-        item.classList.add("opacity-60")
-        event.dataTransfer.effectAllowed = "move"
-        event.dataTransfer.setData("text/plain", item.dataset.imageId)
-      }
-
-      this.onDragOver = event => {
-        if (!this.draggedItem) return
-
-        const item = event.target.closest("[data-image-id]")
-
-        if (!item || item === this.draggedItem) return
-
-        event.preventDefault()
-
-        const {top, height} = item.getBoundingClientRect()
-        const shouldInsertBefore = event.clientY < top + height / 2
-
-        if (shouldInsertBefore) {
-          this.el.insertBefore(this.draggedItem, item)
-        } else {
-          this.el.insertBefore(this.draggedItem, item.nextElementSibling)
-        }
-      }
-
-      this.onDrop = event => {
-        if (!this.draggedItem) return
-
-        event.preventDefault()
-
-        const orderedIds = [...this.el.querySelectorAll("[data-image-id]")]
-          .map(item => item.dataset.imageId)
-
-        this.pushEvent("reorder-product-images", {ids: orderedIds})
-      }
-
-      this.onDragEnd = () => {
-        if (!this.draggedItem) return
-
-        this.draggedItem.classList.remove("opacity-60")
-        this.draggedItem = null
-      }
-
-      this.el.addEventListener("dragstart", this.onDragStart)
-      this.el.addEventListener("dragover", this.onDragOver)
-      this.el.addEventListener("drop", this.onDrop)
-      this.el.addEventListener("dragend", this.onDragEnd)
-    },
-
-    destroyed() {
-      this.el.removeEventListener("dragstart", this.onDragStart)
-      this.el.removeEventListener("dragover", this.onDragOver)
-      this.el.removeEventListener("drop", this.onDrop)
-      this.el.removeEventListener("dragend", this.onDragEnd)
-    },
-  },
+  ProductImageSortable: createSortableHook("[data-item-id]", "reorder-product-images"),
+  ProductVariantSortable: createSortableHook("[data-item-id]", "reorder-product-variants"),
 }
 
 const liveSocket = new LiveSocket("/live", Socket, {

@@ -116,7 +116,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
         description_en: "Keeps desk cables organized."
       )
 
-    _first_variant =
+    first_variant =
       product_variant_fixture(product, %{
         variant_name_vi: "Bien the dau",
         variant_name_en: "First variant",
@@ -127,7 +127,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
         image_filename: "first-variant.jpg"
       })
 
-    _second_variant =
+    second_variant =
       product_variant_fixture(product, %{
         variant_name_vi: "Bien the cung order",
         variant_name_en: "Second same order",
@@ -138,7 +138,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
         image_filename: nil
       })
 
-    _later_variant =
+    later_variant =
       product_variant_fixture(product, %{
         variant_name_vi: "Bien the sau",
         variant_name_en: "Later variant",
@@ -214,6 +214,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Product variants"
     assert html =~ "New variant"
     assert html =~ ~s(phx-click="open-edit-variant-dialog")
+    assert html =~ ~s(id="product-variants-sortable")
+    assert html =~ ~s(phx-hook="ProductVariantSortable")
     refute html =~ "New product variant"
     assert html =~ "First variant"
     assert html =~ "Second same order"
@@ -232,6 +234,10 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "—"
     assert html =~ "Edit"
     assert html =~ "Remove"
+    assert html =~ "Drag"
+    assert html =~ ~s(id="product-variant-#{first_variant.id}")
+    assert html =~ ~s(id="product-variant-#{second_variant.id}")
+    assert html =~ ~s(id="product-variant-#{later_variant.id}")
     assert html =~ ~s(phx-click="delete-product-variant")
     assert html =~ ~s(data-confirm="Remove this product variant?")
     assert html =~ "English description"
@@ -820,6 +826,126 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert html =~ "Product variant not found."
     refute html =~ "Edit product variant"
+  end
+
+  test "reordering product variants updates row order and keeps the selected edit variant", %{
+    conn: conn
+  } do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "reorder-variants",
+        name_vi: "San pham sap xep bien the",
+        name_en: "Reorder variants product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    first_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the dau",
+        variant_name_en: "First variant",
+        display_order: 0
+      })
+
+    second_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the hai",
+        variant_name_en: "Second variant",
+        display_order: 1
+      })
+
+    third_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the ba",
+        variant_name_en: "Third variant",
+        display_order: 2
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element(
+        ~s(button[phx-click="open-edit-variant-dialog"][phx-value-id="#{second_variant.id}"])
+      )
+      |> render_click()
+
+    html =
+      view
+      |> element("#product-variants-sortable")
+      |> render_hook("reorder-product-variants", %{
+        "ids" => [
+          Integer.to_string(third_variant.id),
+          Integer.to_string(second_variant.id),
+          Integer.to_string(first_variant.id)
+        ]
+      })
+
+    assert html =~ "Product variant order updated."
+    assert html =~ "Edit product variant"
+    assert html =~ ~s(value="Second variant")
+
+    {third_row_pos, _} = :binary.match(html, ~s(id="product-variant-#{third_variant.id}"))
+    {second_row_pos, _} = :binary.match(html, ~s(id="product-variant-#{second_variant.id}"))
+    {first_row_pos, _} = :binary.match(html, ~s(id="product-variant-#{first_variant.id}"))
+    assert third_row_pos < second_row_pos
+    assert second_row_pos < first_row_pos
+
+    assert Enum.map(CaHeoShop.Products.list_product_variants(product), &{&1.id, &1.display_order}) ==
+             [
+               {third_variant.id, 0},
+               {second_variant.id, 1},
+               {first_variant.id, 2}
+             ]
+  end
+
+  test "invalid product variant reorder shows an error and keeps current order", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "invalid-reorder-variants",
+        name_vi: "San pham sap xep loi bien the",
+        name_en: "Invalid reorder variants product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    first_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the dau",
+        variant_name_en: "First variant",
+        display_order: 0
+      })
+
+    second_variant =
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the hai",
+        variant_name_en: "Second variant",
+        display_order: 1
+      })
+
+    html =
+      live(conn, ~p"/admin/products/#{product.id}")
+      |> then(fn {:ok, view, _html} ->
+        view
+        |> element("#product-variants-sortable")
+        |> render_hook("reorder-product-variants", %{
+          "ids" => [Integer.to_string(second_variant.id), Integer.to_string(second_variant.id)]
+        })
+      end)
+
+    assert html =~ "Could not reorder product variants."
+
+    {first_row_pos, _} = :binary.match(html, ~s(id="product-variant-#{first_variant.id}"))
+    {second_row_pos, _} = :binary.match(html, ~s(id="product-variant-#{second_variant.id}"))
+    assert first_row_pos < second_row_pos
+
+    assert Enum.map(CaHeoShop.Products.list_product_variants(product), &{&1.id, &1.display_order}) ==
+             [
+               {first_variant.id, 0},
+               {second_variant.id, 1}
+             ]
   end
 
   test "deletes a product variant from the detail page", %{conn: conn} do
