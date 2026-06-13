@@ -6,6 +6,10 @@
 
 [DONE] ✅ [13/06/2026 21:14] 039-09_admin_product_variant_drag_drop_ordering.md
 
+[todo] 039-10_admin_edit_product_summary_dialog.md
+
+[todo] 039-11_admin_edit_product_content_dialog.md
+
 [Backlog] 033_update-users-with-role-fullname.md
 
 [backlog] 034_allow-login-w-username-and-email.md
