@@ -33,14 +33,66 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ user.email
   end
 
-  test "renders product management page", %{conn: conn} do
+  test "renders product management page with real products and controls", %{conn: conn} do
+    collection =
+      collection_fixture(
+        name_vi: "Bo suu tap in 3D",
+        name_en: "Printed Collection",
+        nav_display_order: 0
+      )
+
+    product =
+      product_fixture(
+        collection: collection,
+        slug: "ban-phim",
+        name_vi: "Gia do ban phim",
+        name_en: "Keyboard Stand"
+      )
+
+    product_image_fixture(product,
+      filename: "/images/storefront/keyboard-stand.jpg",
+      display_order: 0,
+      has_thumbnail: true
+    )
+
+    product_variant_fixture(product,
+      variant_name: "PLA Red",
+      stock_quantity: 10,
+      production_cost: 25_000,
+      selling_price: 50_000
+    )
+
+    product_fixture(
+      collection_id: nil,
+      slug: "bo-oc-du-phong",
+      name_vi: "Bo oc du phong",
+      name_en: "Spare Fasteners"
+    )
+
     {:ok, _view, html} = live(conn, ~p"/admin/products")
 
     assert html =~ "Products"
     assert html =~ "Create product"
-    refute html =~ "Search"
-    assert html =~ "Cost"
-    assert html =~ "Modular Desk Organizer"
+    assert html =~ "Search products"
+    assert html =~ "Rows per page"
+    assert html =~ "Page"
+    assert html =~ "All collections"
+    assert html =~ "No collection"
+    assert html =~ "Gia do ban phim"
+    assert html =~ "Keyboard Stand"
+    assert html =~ "/ban-phim"
+    assert html =~ "Bo suu tap in 3D"
+    assert html =~ "PLA Red"
+    assert html =~ "Stock: 10"
+    assert html =~ "Cost: 25,000 VND"
+    assert html =~ "Price: 50,000 VND"
+    assert html =~ "/images/storefront/keyboard-stand_500x500px.jpg"
+    assert html =~ "Bo oc du phong"
+    assert html =~ "No image"
+    assert html =~ "No variants"
+    assert html =~ "Showing products 1-2 of 2"
+    refute html =~ "Export mock CSV"
+    refute html =~ "Bulk action"
   end
 
   test "renders product create, edit, and delete placeholders", %{conn: conn} do
@@ -60,6 +112,97 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert delete_html =~ "Are you sure you want to delete this product?"
     assert delete_html =~ "This is a mock action and will not delete real data."
+  end
+
+  test "filters products by collection and supports null collection filter", %{conn: conn} do
+    visible_collection = collection_fixture(name_vi: "Visible collection", nav_display_order: 0)
+    other_collection = collection_fixture(name_vi: "Other collection", nav_display_order: 1)
+
+    visible_product =
+      product_fixture(
+        collection: visible_collection,
+        slug: "visible-product",
+        name_vi: "Visible product row"
+      )
+
+    _other_product =
+      product_fixture(
+        collection: other_collection,
+        slug: "other-product",
+        name_vi: "Other product row"
+      )
+
+    uncategorized_product =
+      product_fixture(
+        collection_id: nil,
+        slug: "null-product",
+        name_vi: "No collection product row"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products")
+
+    render_change(element(view, "#admin-products-collection-filter"), %{"collection" => "NULL"})
+    assert_patch(view, ~p"/admin/products?collection=NULL&page=1&per_page=20&q=")
+
+    html = render(view)
+    assert html =~ uncategorized_product.name_vi
+    refute html =~ "/#{visible_product.slug}"
+
+    render_change(element(view, "#admin-products-collection-filter"), %{
+      "collection" => Integer.to_string(visible_collection.id)
+    })
+
+    assert_patch(
+      view,
+      ~p"/admin/products?collection=#{visible_collection.id}&page=1&per_page=20&q="
+    )
+
+    html = render(view)
+    assert html =~ visible_product.name_vi
+    refute html =~ "/#{uncategorized_product.slug}"
+  end
+
+  test "searches products by name", %{conn: conn} do
+    matching =
+      product_fixture(
+        collection_id: nil,
+        slug: "keyboard-stand",
+        name_vi: "Gia do",
+        name_en: "Keyboard Stand"
+      )
+
+    _other =
+      product_fixture(
+        collection_id: nil,
+        slug: "cable-box",
+        name_vi: "Hop cap",
+        name_en: "Cable Box"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products")
+
+    render_submit(element(view, "#admin-products-search-form"), %{"q" => "keyboard"})
+    assert_patch(view, ~p"/admin/products?collection=ALL&page=1&per_page=20&q=keyboard")
+
+    html = render(view)
+    assert html =~ matching.name_en
+    refute html =~ "Cable Box"
+  end
+
+  test "supports pagination and per_page params from the URL", %{conn: conn} do
+    for index <- 1..21 do
+      product_fixture(
+        collection_id: nil,
+        slug: "paged-product-#{index}",
+        name_vi: "Paged #{index}",
+        name_en: "Paged #{index}"
+      )
+    end
+
+    {:ok, _paged_view, paged_html} = live(conn, ~p"/admin/products?page=2&per_page=20")
+
+    assert paged_html =~ "Showing products 21-21 of 21"
+    assert paged_html =~ "Paged 1"
   end
 
   test "renders order management page", %{conn: conn} do

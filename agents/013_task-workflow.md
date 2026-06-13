@@ -1,4 +1,4 @@
-[todo] 036-admin_product_index_page.md
+[DONE] ✅ [13/06/2026 15:57] 036-admin_product_index_page.md
 
 
 

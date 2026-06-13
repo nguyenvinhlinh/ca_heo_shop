@@ -22,6 +22,11 @@ defmodule CaHeoShopWeb.AdminLive do
   end
 
   @impl true
+  def handle_params(_params, _uri, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} variant={:admin}>
@@ -34,8 +39,6 @@ defmodule CaHeoShopWeb.AdminLive do
               orders={@orders}
               top_purchased_products={@top_purchased_products}
             />
-          <% :products -> %>
-            <.products_page products={@products} />
           <% :product_new -> %>
             <.product_form_page
               product={@selected_product}
@@ -372,71 +375,6 @@ defmodule CaHeoShopWeb.AdminLive do
         <p class="text-xs text-base-content/60">{@metric.note}</p>
       </div>
     </div>
-    """
-  end
-
-  attr :products, :list, required: true
-
-  def products_page(assigns) do
-    ~H"""
-    <.page_header title="Products" section="Ecommerce" description="Mock product management table.">
-      <:actions>
-        <.link navigate={~p"/admin/products/new"} class="btn btn-primary btn-sm">
-          <.icon name="hero-plus" class="size-4" /> Create product
-        </.link>
-      </:actions>
-    </.page_header>
-
-    <section class="card mt-6 bg-base-100 shadow-sm">
-      <div class="card-body p-0">
-        <.table_toolbar filter="Collection" />
-        <div class="overflow-auto">
-          <table class="table">
-            <thead>
-              <tr>
-                <th><input type="checkbox" class="checkbox checkbox-sm" /></th>
-                <th>Product</th>
-                <th>Collection</th>
-                <th>Price</th>
-                <th>Cost</th>
-                <th>Status</th>
-                <th>Stock</th>
-                <th>Updated At</th>
-                <th class="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={product <- @products} class="hover:bg-base-200/40">
-                <td><input type="checkbox" class="checkbox checkbox-sm" /></td>
-                <td>
-                  <div class="flex items-center gap-3">
-                    <img src={product.image} alt="" class="size-10 rounded-box object-cover" />
-                    <div>
-                      <p class="font-medium">{product.name}</p>
-                      <p class="text-xs text-base-content/60">#{product.sku}</p>
-                    </div>
-                  </div>
-                </td>
-                <td>{product.collection}</td>
-                <td>{product.price}</td>
-                <td>{product.cost}</td>
-                <td><.status_badge status={product.status} /></td>
-                <td>{product.stock}</td>
-                <td>{product.updated_at}</td>
-                <td class="text-right">
-                  <.row_actions
-                    view={~p"/products/#{product.slug}"}
-                    edit={~p"/admin/products/#{product.slug}/edit"}
-                    delete={~p"/admin/products/#{product.slug}/delete"}
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <.pagination count={length(@products)} label="products" />
-      </div>
-    </section>
     """
   end
 

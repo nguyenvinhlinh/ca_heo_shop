@@ -23,6 +23,12 @@ defmodule CaHeoShop.Collections do
     |> Repo.all()
   end
 
+  def list_filterable_collections do
+    Collection
+    |> order_by([c], asc_nulls_last: c.nav_display_order, asc: c.name_vi, asc: c.name_en)
+    |> Repo.all()
+  end
+
   def get_collection!(id), do: Repo.get!(Collection, id)
 
   def get_collection_by_slug!(slug) when is_binary(slug) do

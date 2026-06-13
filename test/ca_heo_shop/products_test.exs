@@ -81,6 +81,162 @@ defmodule CaHeoShop.ProductsTest do
     end
   end
 
+  describe "admin product listing" do
+    test "returns paginated products with collection, image, and variant preloads" do
+      collection =
+        collection_fixture(name_vi: "Bo suu tap A", name_en: "Collection A", nav_display_order: 0)
+
+      older = product_fixture(collection: collection, slug: "older-product", name_vi: "Cu")
+      newer = product_fixture(collection: nil, slug: "newer-product", name_vi: "Moi")
+
+      later_image =
+        product_image_fixture(newer, %{
+          filename: "later.jpg",
+          display_order: 2,
+          has_thumbnail: false
+        })
+
+      first_image =
+        product_image_fixture(newer, %{
+          filename: "first.jpg",
+          display_order: 0,
+          has_thumbnail: true
+        })
+
+      later_variant =
+        product_variant_fixture(newer, %{
+          variant_name: "Variant later",
+          display_order: 2,
+          selling_price: 90_000
+        })
+
+      first_variant =
+        product_variant_fixture(newer, %{
+          variant_name: "Variant first",
+          display_order: 0,
+          selling_price: 100_000
+        })
+
+      page = Products.list_admin_products(%{"page" => "1", "per_page" => "20"})
+
+      assert page.page == 1
+      assert page.per_page == 20
+      assert page.total_count == 2
+      assert page.total_pages == 1
+      assert page.from == 1
+      assert page.to == 2
+      assert Enum.map(page.entries, & &1.id) == [newer.id, older.id]
+
+      product = hd(page.entries)
+
+      assert Ecto.assoc_loaded?(product.collection)
+      assert Ecto.assoc_loaded?(product.product_images)
+      assert Ecto.assoc_loaded?(product.product_variants)
+      assert Enum.map(product.product_images, & &1.id) == [first_image.id, later_image.id]
+      assert Enum.map(product.product_variants, & &1.id) == [first_variant.id, later_variant.id]
+    end
+
+    test "returns second page and supports per_page normalization" do
+      for index <- 1..25 do
+        product_fixture(slug: "page-product-#{index}", name_vi: "San pham #{index}")
+      end
+
+      first_page = Products.list_admin_products(%{"page" => "1", "per_page" => "20"})
+      second_page = Products.list_admin_products(%{"page" => "2", "per_page" => "20"})
+      normalized = Products.list_admin_products(%{"page" => "-9", "per_page" => "999"})
+
+      assert length(first_page.entries) == 20
+      assert first_page.from == 1
+      assert first_page.to == 20
+      assert second_page.page == 2
+      assert length(second_page.entries) == 5
+      assert second_page.from == 21
+      assert second_page.to == 25
+      assert normalized.page == 1
+      assert normalized.per_page == 20
+    end
+
+    test "returns 0-0 range when there are no products" do
+      page = Products.list_admin_products()
+
+      assert page.entries == []
+      assert page.total_count == 0
+      assert page.from == 0
+      assert page.to == 0
+    end
+
+    test "filters products by collection all null and concrete id" do
+      collection = collection_fixture(name_vi: "Co bo suu tap")
+      other_collection = collection_fixture(name_vi: "Bo suu tap khac")
+      in_collection = product_fixture(collection: collection, slug: "in-collection")
+      other = product_fixture(collection: other_collection, slug: "other-collection")
+      uncategorized = product_fixture(collection_id: nil, slug: "no-collection")
+
+      all_products = Products.list_admin_products(%{"collection" => "ALL"})
+      null_products = Products.list_admin_products(%{"collection" => "NULL"})
+
+      selected_products =
+        Products.list_admin_products(%{"collection" => Integer.to_string(collection.id)})
+
+      invalid_products = Products.list_admin_products(%{"collection" => "invalid"})
+
+      assert Enum.map(all_products.entries, & &1.id) |> Enum.sort() ==
+               Enum.sort([in_collection.id, other.id, uncategorized.id])
+
+      assert Enum.map(null_products.entries, & &1.id) == [uncategorized.id]
+      assert Enum.map(selected_products.entries, & &1.id) == [in_collection.id]
+
+      assert Enum.map(invalid_products.entries, & &1.id) |> Enum.sort() ==
+               Enum.map(all_products.entries, & &1.id) |> Enum.sort()
+    end
+
+    test "searches by vietnamese and english name and combines with collection filter" do
+      collection = collection_fixture(name_vi: "Dung cu")
+
+      vi_product =
+        product_fixture(
+          collection: collection,
+          slug: "gia-do",
+          name_vi: "Gia do ban phim",
+          name_en: "Keyboard Stand"
+        )
+
+      en_product =
+        product_fixture(
+          collection_id: nil,
+          slug: "peg-board",
+          name_vi: "Bang treo",
+          name_en: "Peg Board"
+        )
+
+      _other =
+        product_fixture(
+          collection: collection,
+          slug: "cable-box",
+          name_vi: "Hop day cap",
+          name_en: "Cable Box"
+        )
+
+      vi_search = Products.list_admin_products(%{"q" => "  gia do  "})
+      en_search = Products.list_admin_products(%{"q" => "peg board"})
+      case_insensitive = Products.list_admin_products(%{"q" => "KEYBOARD"})
+
+      combined =
+        Products.list_admin_products(%{
+          "collection" => Integer.to_string(collection.id),
+          "q" => "keyboard"
+        })
+
+      blank_search = Products.list_admin_products(%{"q" => "   "})
+
+      assert Enum.map(vi_search.entries, & &1.id) == [vi_product.id]
+      assert Enum.map(en_search.entries, & &1.id) == [en_product.id]
+      assert Enum.map(case_insensitive.entries, & &1.id) == [vi_product.id]
+      assert Enum.map(combined.entries, & &1.id) == [vi_product.id]
+      assert blank_search.total_count == 3
+    end
+  end
+
   describe "product images" do
     test "change_product_image/2 requires product_id and filename" do
       changeset = Products.change_product_image(%ProductImage{}, %{})
