@@ -100,6 +100,30 @@ defmodule CaHeoShopWeb.ProductLive do
     end
   end
 
+  def handle_event("reorder-product-images", %{"ids" => ordered_image_ids}, socket) do
+    product = socket.assigns.selected_product
+
+    case Products.reorder_product_images(product.id, ordered_image_ids) do
+      {:ok, reordered_product_images} ->
+        updated_product = %{product | product_images: reordered_product_images}
+
+        {:noreply,
+         socket
+         |> assign(:selected_product, updated_product)
+         |> assign(
+           :selected_product_image,
+           refreshed_selected_product_image(
+             reordered_product_images,
+             socket.assigns.selected_product_image
+           )
+         )
+         |> put_flash(:info, "Product image order updated.")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Could not reorder product images.")}
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -621,45 +645,67 @@ defmodule CaHeoShopWeb.ProductLive do
         </div>
 
         <div :if={@product_images != []} class="space-y-3">
-          <button
-            :for={product_image <- @product_images}
-            type="button"
-            phx-click="select-product-image"
-            phx-value-id={product_image.id}
-            class={[
-              "flex w-full items-center gap-3 rounded-box border p-3 text-left transition-colors",
-              selected_product_image?(product_image, @selected_image) &&
-                "border-primary bg-primary/5",
-              !selected_product_image?(product_image, @selected_image) &&
-                "border-base-300 hover:bg-base-200/40"
-            ]}
+          <div
+            id="product-images-sortable"
+            phx-hook="ProductImageSortable"
+            class="space-y-3"
           >
-            <div class="h-14 w-14 shrink-0 overflow-hidden rounded-box bg-base-200/60">
-              <%= if preview_path = product_image_preview_path(product_image) do %>
-                <img
-                  src={preview_path}
-                  alt={product_image.filename}
-                  class="h-full w-full object-cover"
-                />
-              <% end %>
-            </div>
+            <div
+              :for={product_image <- @product_images}
+              id={"product-image-#{product_image.id}"}
+              data-image-id={product_image.id}
+              class={[
+                "flex items-start gap-3 rounded-box border p-3 transition-colors",
+                selected_product_image?(product_image, @selected_image) &&
+                  "border-primary bg-primary/5",
+                !selected_product_image?(product_image, @selected_image) &&
+                  "border-base-300 hover:bg-base-200/40"
+              ]}
+            >
+              <button
+                type="button"
+                phx-click="select-product-image"
+                phx-value-id={product_image.id}
+                class="flex min-w-0 grow items-center gap-3 text-left"
+              >
+                <div class="h-14 w-14 shrink-0 overflow-hidden rounded-box bg-base-200/60">
+                  <%= if preview_path = product_image_preview_path(product_image) do %>
+                    <img
+                      src={preview_path}
+                      alt={product_image.filename}
+                      class="h-full w-full object-cover"
+                    />
+                  <% end %>
+                </div>
 
-            <div class="min-w-0 grow">
-              <div class="flex items-center justify-between gap-2">
-                <p class="truncate text-sm font-medium">{product_image.filename}</p>
-                <span
-                  :if={selected_product_image?(product_image, @selected_image)}
-                  class="badge badge-primary badge-xs"
-                >
-                  Selected
-                </span>
-              </div>
-              <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-base-content/60">
-                <span>Order: {product_image.display_order}</span>
-                <span>Thumbnail: {thumbnail_status_label(product_image)}</span>
-              </div>
+                <div class="min-w-0 grow">
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="truncate text-sm font-medium">{product_image.filename}</p>
+                    <span
+                      :if={selected_product_image?(product_image, @selected_image)}
+                      class="badge badge-primary badge-xs"
+                    >
+                      Selected
+                    </span>
+                  </div>
+                  <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-base-content/60">
+                    <span>Order: {product_image.display_order}</span>
+                    <span>Thumbnail: {thumbnail_status_label(product_image)}</span>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                draggable="true"
+                data-role="drag-handle"
+                class="btn btn-secondary btn-sm shrink-0 cursor-grab active:cursor-grabbing"
+                aria-label={"Drag #{product_image.filename}"}
+              >
+                Drag
+              </button>
             </div>
-          </button>
+          </div>
         </div>
       </div>
     </section>
@@ -783,6 +829,13 @@ defmodule CaHeoShopWeb.ProductLive do
     Enum.find(product.product_images, &(&1.display_order == 0)) ||
       List.first(product.product_images)
   end
+
+  defp refreshed_selected_product_image(product_images, %{id: selected_image_id}) do
+    Enum.find(product_images, &(&1.id == selected_image_id)) || List.first(product_images)
+  end
+
+  defp refreshed_selected_product_image(product_images, _selected_image),
+    do: List.first(product_images)
 
   defp product_image_thumbnail_path(%{filename: filename, has_thumbnail: true})
        when is_binary(filename) do

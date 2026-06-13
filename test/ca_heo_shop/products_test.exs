@@ -126,6 +126,90 @@ defmodule CaHeoShop.ProductsTest do
       assert {:ok, %Product{}} = Products.delete_product(product)
       assert_raise Ecto.NoResultsError, fn -> Products.get_product!(product.id) end
     end
+
+    test "reorder_product_images/2 updates display_order sequentially and accepts string ids" do
+      product = product_fixture()
+
+      first_image = product_image_fixture(product, %{filename: "first.jpg", display_order: 0})
+      second_image = product_image_fixture(product, %{filename: "second.jpg", display_order: 1})
+      third_image = product_image_fixture(product, %{filename: "third.jpg", display_order: 2})
+
+      assert {:ok, reordered_images} =
+               Products.reorder_product_images(product.id, [
+                 Integer.to_string(third_image.id),
+                 Integer.to_string(first_image.id),
+                 Integer.to_string(second_image.id)
+               ])
+
+      assert Enum.map(reordered_images, &{&1.id, &1.display_order}) == [
+               {third_image.id, 0},
+               {first_image.id, 1},
+               {second_image.id, 2}
+             ]
+
+      assert Enum.map(Products.list_product_images(product), &{&1.id, &1.display_order}) == [
+               {third_image.id, 0},
+               {first_image.id, 1},
+               {second_image.id, 2}
+             ]
+    end
+
+    test "reorder_product_images/2 rejects foreign image ids and keeps the original order" do
+      product = product_fixture()
+      other_product = product_fixture()
+
+      first_image = product_image_fixture(product, %{filename: "first.jpg", display_order: 0})
+      second_image = product_image_fixture(product, %{filename: "second.jpg", display_order: 1})
+
+      foreign_image =
+        product_image_fixture(other_product, %{filename: "foreign.jpg", display_order: 0})
+
+      assert {:error, :invalid_product_image_order} =
+               Products.reorder_product_images(product.id, [
+                 second_image.id,
+                 foreign_image.id
+               ])
+
+      assert Enum.map(Products.list_product_images(product), &{&1.id, &1.display_order}) == [
+               {first_image.id, 0},
+               {second_image.id, 1}
+             ]
+    end
+
+    test "reorder_product_images/2 rejects unknown image ids" do
+      product = product_fixture()
+      first_image = product_image_fixture(product, %{filename: "first.jpg", display_order: 0})
+      second_image = product_image_fixture(product, %{filename: "second.jpg", display_order: 1})
+
+      assert {:error, :invalid_product_image_order} =
+               Products.reorder_product_images(product.id, [second_image.id, first_image.id, -1])
+    end
+
+    test "reorder_product_images/2 rejects missing image ids" do
+      product = product_fixture()
+      _first_image = product_image_fixture(product, %{filename: "first.jpg", display_order: 0})
+      second_image = product_image_fixture(product, %{filename: "second.jpg", display_order: 1})
+
+      assert {:error, :invalid_product_image_order} =
+               Products.reorder_product_images(product.id, [second_image.id])
+    end
+
+    test "reorder_product_images/2 rejects duplicate image ids" do
+      product = product_fixture()
+      first_image = product_image_fixture(product, %{filename: "first.jpg", display_order: 0})
+      second_image = product_image_fixture(product, %{filename: "second.jpg", display_order: 1})
+
+      assert {:error, :invalid_product_image_order} =
+               Products.reorder_product_images(product.id, [
+                 second_image.id,
+                 second_image.id
+               ])
+
+      assert Enum.map(Products.list_product_images(product), &{&1.id, &1.display_order}) == [
+               {first_image.id, 0},
+               {second_image.id, 1}
+             ]
+    end
   end
 
   describe "admin product listing" do

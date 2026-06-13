@@ -149,14 +149,14 @@ defmodule CaHeoShopWeb.AdminLiveTest do
         image_filename: "later-variant.jpg"
       })
 
-    _selected_image =
+    selected_image =
       product_image_fixture(product, %{
         filename: "/images/storefront/magnetic-cable-clip.jpg",
         display_order: 0,
         has_thumbnail: true
       })
 
-    _no_thumbnail_image =
+    no_thumbnail_image =
       product_image_fixture(product, %{
         filename: "/images/storefront/magnetic-cable-clip-detail.jpg",
         display_order: 1,
@@ -193,6 +193,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Copy"
     assert html =~ "Delete"
     assert html =~ "View original"
+    assert html =~ "Drag"
+    assert html =~ ~s(id="product-images-sortable")
     assert html =~ "/images/storefront/magnetic-cable-clip_500x500px.jpg"
     assert html =~ "/images/storefront/magnetic-cable-clip.jpg"
     assert html =~ "/images/storefront/magnetic-cable-clip-detail.jpg"
@@ -200,6 +202,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Order: 1"
     assert html =~ "Thumbnail: yes"
     assert html =~ "Thumbnail: no"
+    assert html =~ ~s(id="product-image-#{selected_image.id}")
+    assert html =~ ~s(id="product-image-#{no_thumbnail_image.id}")
     assert html =~ ~s(data-copy-text="/images/storefront/magnetic-cable-clip.jpg")
     assert html =~ "/images/storefront/magnetic-cable-clip_500x500px.jpg"
     assert html =~ ~s(data-copy-text="/images/storefront/magnetic-cable-clip_500x500px.jpg")
@@ -307,6 +311,125 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "/images/storefront/selectable-primary_500x500px.jpg"
     assert html =~ ~s(data-copy-text="/images/storefront/selectable-primary.jpg")
     assert html =~ ~s(data-copy-text="/images/storefront/selectable-primary_500x500px.jpg")
+  end
+
+  test "reordering product images updates list order and keeps the selected image", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "reorderable-images",
+        name_vi: "San pham sap xep anh",
+        name_en: "Reorderable images",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    first_image =
+      product_image_fixture(product, %{
+        filename: "/images/storefront/reorder-first.jpg",
+        display_order: 0,
+        has_thumbnail: true
+      })
+
+    second_image =
+      product_image_fixture(product, %{
+        filename: "/images/storefront/reorder-second.jpg",
+        display_order: 1,
+        has_thumbnail: true
+      })
+
+    third_image =
+      product_image_fixture(product, %{
+        filename: "/images/storefront/reorder-third.jpg",
+        display_order: 2,
+        has_thumbnail: false
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element(~s(button[phx-click="select-product-image"][phx-value-id="#{second_image.id}"]))
+      |> render_click()
+
+    html =
+      view
+      |> element("#product-images-sortable")
+      |> render_hook("reorder-product-images", %{
+        "ids" => [
+          Integer.to_string(third_image.id),
+          Integer.to_string(second_image.id),
+          Integer.to_string(first_image.id)
+        ]
+      })
+
+    assert html =~ "Product image order updated."
+    assert html =~ ~s(data-copy-text="/images/storefront/reorder-second.jpg")
+
+    {third_row_pos, _} = :binary.match(html, ~s(id="product-image-#{third_image.id}"))
+    {second_row_pos, _} = :binary.match(html, ~s(id="product-image-#{second_image.id}"))
+    {first_row_pos, _} = :binary.match(html, ~s(id="product-image-#{first_image.id}"))
+    assert third_row_pos < second_row_pos
+    assert second_row_pos < first_row_pos
+
+    assert html =~ "Order: 0"
+    assert html =~ "Order: 1"
+    assert html =~ "Order: 2"
+
+    assert Enum.map(CaHeoShop.Products.list_product_images(product), &{&1.id, &1.display_order}) ==
+             [
+               {third_image.id, 0},
+               {second_image.id, 1},
+               {first_image.id, 2}
+             ]
+  end
+
+  test "invalid product image reorder shows an error and keeps the current order", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "invalid-reorder",
+        name_vi: "San pham sap xep loi",
+        name_en: "Invalid reorder",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    first_image =
+      product_image_fixture(product, %{
+        filename: "/images/storefront/invalid-first.jpg",
+        display_order: 0,
+        has_thumbnail: true
+      })
+
+    second_image =
+      product_image_fixture(product, %{
+        filename: "/images/storefront/invalid-second.jpg",
+        display_order: 1,
+        has_thumbnail: true
+      })
+
+    html =
+      live(conn, ~p"/admin/products/#{product.id}")
+      |> then(fn {:ok, view, _html} ->
+        view
+        |> element("#product-images-sortable")
+        |> render_hook("reorder-product-images", %{
+          "ids" => [Integer.to_string(second_image.id), Integer.to_string(second_image.id)]
+        })
+      end)
+
+    assert html =~ "Could not reorder product images."
+
+    {first_row_pos, _} = :binary.match(html, ~s(id="product-image-#{first_image.id}"))
+    {second_row_pos, _} = :binary.match(html, ~s(id="product-image-#{second_image.id}"))
+    assert first_row_pos < second_row_pos
+
+    assert Enum.map(CaHeoShop.Products.list_product_images(product), &{&1.id, &1.display_order}) ==
+             [
+               {first_image.id, 0},
+               {second_image.id, 1}
+             ]
   end
 
   test "invalid product image selection is ignored safely", %{conn: conn} do

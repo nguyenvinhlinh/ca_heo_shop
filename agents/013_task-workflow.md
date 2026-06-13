@@ -2,7 +2,7 @@
 
 [DONE] ✅ [13/06/2026 20:16] 039-04_admin_product_image_preview_selection.md
 
-[backlog] 039-05_admin_product_image_drag_drop_ordering.md
+[DONE] ✅ [13/06/2026 20:41] 039-05_admin_product_image_drag_drop_ordering.md
 
 [backlog] 039-06_admin_create_product_variant_dialog.md
 
