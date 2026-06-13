@@ -18,7 +18,7 @@ defmodule CaHeoShopWeb.CollectionLive do
       |> allow_upload(:collection_image,
         accept: ~w(.png .jpg .jpeg),
         max_entries: 1,
-        max_file_size: 1_000_000
+        max_file_size: 2_000_000
       )
 
     {:ok, socket}
