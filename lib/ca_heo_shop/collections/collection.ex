@@ -10,6 +10,7 @@ defmodule CaHeoShop.Collections.Collection do
     field :description_en, :string
     field :image_filename, :string
     field :nav_display_order, :integer
+    field :has_thumbnail, :boolean
 
     timestamps(type: :utc_datetime)
   end

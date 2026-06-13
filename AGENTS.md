@@ -16,7 +16,9 @@ Read the following documents before making changes:
 
 - Task workflow: `agents/013_task-workflow.md`, Example:
 ```
-[WORKING] ⏳ 028-01_upload-collection-images.md
+[BACKLOG] 📜 003_consolidate-ui-system.md
+
+[WORKING] ⏳ 028-01_upload-collection-images.mdw
 
 [TODO] ❌ 028-02_generate_collection_image_thumbnail_500x500px.md
 
@@ -24,8 +26,9 @@ Read the following documents before making changes:
 ```
     - Time can be extract with command `date -u +"%d/%m/%Y %H:%M"`.
     - There are only three tags:
-        - `DONE`: icon ✅,
-        - `TODO`: icon ❌,
+        - `DONE`: icon ✅
+        - `TODO`: icon ❌
         - `WORKING`: icon ⏳
+        - `BACKLOG`: icon 📜
 
 - List of tasks: `agents/014_tasks`

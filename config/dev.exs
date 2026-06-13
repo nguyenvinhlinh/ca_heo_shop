@@ -1,5 +1,7 @@
 import Config
 
+config :ca_heo_shop, :assets_path, "/home/nguyenvinhlinh/Projects/ca_heo_shop/web_upload_assets"
+
 # Configure your database
 config :ca_heo_shop, CaHeoShop.Repo,
   username: "ca_heo_shop_local",

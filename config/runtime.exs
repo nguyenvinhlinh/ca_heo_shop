@@ -1,5 +1,11 @@
 import Config
 
+assets_path = System.get_env("CA_HEO_SHOP_ASSETS_PATH")
+
+if assets_path do
+  config :ca_heo_shop, :assets_path, assets_path
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration

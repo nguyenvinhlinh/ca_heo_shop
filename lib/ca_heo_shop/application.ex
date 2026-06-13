@@ -10,6 +10,7 @@ defmodule CaHeoShop.Application do
     children = [
       CaHeoShopWeb.Telemetry,
       CaHeoShop.Repo,
+      CaHeoShop.GenServer.ThumbnailGenerator,
       {DNSCluster, query: Application.get_env(:ca_heo_shop, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: CaHeoShop.PubSub},
       # Start a worker by calling: CaHeoShop.Worker.start_link(arg)

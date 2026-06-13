@@ -2,12 +2,14 @@ defmodule CaHeoShopWeb.AdminLiveTest do
   use CaHeoShopWeb.ConnCase
 
   alias CaHeoShop.Collections
+  alias CaHeoShop.Uploads
 
   import CaHeoShop.CollectionsFixtures
   import CaHeoShop.ProductsFixtures
   import Phoenix.LiveViewTest
 
   setup :register_and_log_in_user
+  setup :set_collection_assets_path
 
   test "redirects guests from admin dashboard" do
     conn = Phoenix.ConnTest.build_conn()
@@ -152,6 +154,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert new_html =~ "Create Collection"
     assert new_html =~ "Vietnamese name"
+    refute new_html =~ "collection-image-form"
+    refute new_html =~ "Image filename"
     refute new_html =~ "Product count"
     refute new_html =~ "Status"
 
@@ -175,7 +179,6 @@ defmodule CaHeoShopWeb.AdminLiveTest do
                  slug: "diy-kits",
                  description_vi: "Mo ta",
                  description_en: "Description",
-                 image_filename: "/images/storefront/category-kits.svg",
                  nav_display_order: "1"
                }
              )
@@ -199,6 +202,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert edit_html =~ "Edit Collection"
     assert edit_html =~ "Cu"
+    assert edit_html =~ "collection-image-form"
 
     assert {:ok, _view, html} =
              view
@@ -209,7 +213,6 @@ defmodule CaHeoShopWeb.AdminLiveTest do
                  slug: "new-collection",
                  description_vi: "Cap nhat",
                  description_en: "Updated",
-                 image_filename: "/images/storefront/category-prints.svg",
                  nav_display_order: ""
                }
              )
@@ -218,6 +221,50 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert html =~ "Collection updated"
     assert Collections.get_collection_by_slug!("new-collection").name_vi == "Moi"
+  end
+
+  test "uploads a collection image from the edit page", %{conn: conn} do
+    collection = collection_fixture(image_filename: nil)
+
+    {:ok, view, _html} = live(conn, ~p"/admin/collections/#{collection.slug}/edit")
+
+    upload =
+      file_input(view, "#collection-image-form", :collection_image, [
+        %{name: "collection.jpeg", content: "fake-jpeg", type: "image/jpeg"}
+      ])
+
+    assert render_upload(upload, "collection.jpeg") =~ "100%"
+
+    html =
+      view
+      |> form("#collection-image-form", %{})
+      |> render_submit()
+
+    assert html =~ "Collection image uploaded"
+
+    updated_collection = Collections.get_collection!(collection.id)
+
+    assert updated_collection.has_thumbnail == false
+    assert updated_collection.image_filename =~ ~r/^#{collection.id}_.+\.jpg$/
+
+    assert Uploads.public_collection_image_path(updated_collection.image_filename) =~
+             "/collection_images/"
+
+    assert {:ok, image_path} = Uploads.collection_image_path(updated_collection.image_filename)
+    assert File.exists?(image_path)
+  end
+
+  test "rejects unsupported collection image uploads", %{conn: conn} do
+    collection = collection_fixture(image_filename: nil)
+
+    {:ok, view, _html} = live(conn, ~p"/admin/collections/#{collection.slug}/edit")
+
+    upload =
+      file_input(view, "#collection-image-form", :collection_image, [
+        %{name: "collection.gif", content: "gif-data", type: "image/gif"}
+      ])
+
+    assert {:error, [[_ref, :not_accepted]]} = render_upload(upload, "collection.gif")
   end
 
   test "opens collection delete dialog from index and deletes the collection", %{conn: conn} do
@@ -278,5 +325,30 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Shipping notes"
     assert html =~ "Payment notes"
     refute html =~ "General preferences"
+  end
+
+  defp set_collection_assets_path(_context) do
+    previous = System.get_env("CA_HEO_SHOP_ASSETS_PATH")
+
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "ca_heo_shop_test_assets_#{System.unique_integer([:positive])}"
+      )
+
+    File.mkdir_p!(path)
+    System.put_env("CA_HEO_SHOP_ASSETS_PATH", path)
+
+    on_exit(fn ->
+      if previous do
+        System.put_env("CA_HEO_SHOP_ASSETS_PATH", previous)
+      else
+        System.delete_env("CA_HEO_SHOP_ASSETS_PATH")
+      end
+
+      File.rm_rf(path)
+    end)
+
+    :ok
   end
 end

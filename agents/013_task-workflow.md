@@ -1,6 +1,10 @@
-[TODO] ❌ 028-01_upload-collection-images.md
+[BACKLOG] 📜 030_create-product-table-nullable-collection.md
 
-[TODO] ❌ 028-02_generate_collection_image_thumbnail_500x500px.md
+[DONE] ✅ [13/06/2026 03:45] 028-01_upload-collection-images.md
+
+[DONE] ✅ [13/06/2026 03:45] 028-02_generate_collection_image_thumbnail_500x500px.md
+
+[DONE] ✅ [13/06/2026 03:46] 029_implement-admin-collection-delete.md
 
 [DONE] ✅ 001_research-nexus-dashboard.md
 

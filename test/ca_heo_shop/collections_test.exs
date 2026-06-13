@@ -3,8 +3,11 @@ defmodule CaHeoShop.CollectionsTest do
 
   alias CaHeoShop.Collections
   alias CaHeoShop.Collections.Collection
+  alias CaHeoShop.Uploads
 
   import CaHeoShop.CollectionsFixtures
+
+  setup :set_collection_assets_path
 
   describe "collections" do
     test "change_collection/2 requires name_vi, name_en, and slug" do
@@ -43,5 +46,78 @@ defmodule CaHeoShop.CollectionsTest do
       assert Enum.map(nav_collections, & &1.id) == [first.id, second.id]
       refute hidden.id in Enum.map(nav_collections, & &1.id)
     end
+
+    test "replace_collection_image/2 stores a managed upload and marks thumbnail pending" do
+      collection = collection_fixture(image_filename: nil)
+      upload_path = write_temp_upload!("collection.png", "png-data")
+
+      assert {:ok, updated_collection} =
+               Collections.replace_collection_image(collection, %{
+                 path: upload_path,
+                 client_name: "collection.png"
+               })
+
+      assert updated_collection.has_thumbnail == false
+      assert updated_collection.image_filename =~ ~r/^#{collection.id}_.+\.png$/
+      assert {:ok, stored_path} = Uploads.collection_image_path(updated_collection.image_filename)
+      assert File.exists?(stored_path)
+    end
+
+    test "delete_collection/1 removes uploaded collection image and thumbnail" do
+      collection = collection_fixture(image_filename: nil)
+      upload_path = write_temp_upload!("collection.jpg", "jpg-data")
+
+      assert {:ok, uploaded_collection} =
+               Collections.replace_collection_image(collection, %{
+                 path: upload_path,
+                 client_name: "collection.jpg"
+               })
+
+      assert {:ok, original_path} =
+               Uploads.collection_image_path(uploaded_collection.image_filename)
+
+      thumbnail_filename = Uploads.thumbnail_filename(uploaded_collection.image_filename)
+      assert {:ok, thumbnail_path} = Uploads.collection_image_path(thumbnail_filename)
+      File.write!(thumbnail_path, "thumb-data")
+
+      assert File.exists?(original_path)
+      assert File.exists?(thumbnail_path)
+
+      assert {:ok, _deleted_collection} = Collections.delete_collection(uploaded_collection)
+
+      refute File.exists?(original_path)
+      refute File.exists?(thumbnail_path)
+    end
+  end
+
+  defp set_collection_assets_path(_context) do
+    previous = System.get_env("CA_HEO_SHOP_ASSETS_PATH")
+
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "ca_heo_shop_data_assets_#{System.unique_integer([:positive])}"
+      )
+
+    File.mkdir_p!(path)
+    System.put_env("CA_HEO_SHOP_ASSETS_PATH", path)
+
+    on_exit(fn ->
+      if previous do
+        System.put_env("CA_HEO_SHOP_ASSETS_PATH", previous)
+      else
+        System.delete_env("CA_HEO_SHOP_ASSETS_PATH")
+      end
+
+      File.rm_rf(path)
+    end)
+
+    :ok
+  end
+
+  defp write_temp_upload!(filename, contents) do
+    path = Path.join(System.tmp_dir!(), "#{System.unique_integer([:positive])}-#{filename}")
+    File.write!(path, contents)
+    path
   end
 end

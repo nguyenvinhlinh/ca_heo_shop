@@ -68,6 +68,8 @@ defmodule CaHeoShopWeb.Router do
   scope "/", CaHeoShopWeb do
     pipe_through [:browser]
 
+    get "/collection_images/:filename", CollectionImageController, :show
+
     live_session :current_user,
       on_mount: [{CaHeoShopWeb.UserAuth, :mount_current_scope}] do
       live "/", StorefrontLive, :home

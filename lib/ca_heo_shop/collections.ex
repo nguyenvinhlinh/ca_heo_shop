@@ -4,9 +4,11 @@ defmodule CaHeoShop.Collections do
   """
 
   import Ecto.Query, warn: false
+  require Logger
   alias CaHeoShop.Repo
 
   alias CaHeoShop.Collections.Collection
+  alias CaHeoShop.Uploads
 
   def list_collections do
     Collection
@@ -40,7 +42,11 @@ defmodule CaHeoShop.Collections do
   end
 
   def delete_collection(%Collection{} = collection) do
-    Repo.delete(collection)
+    case Repo.delete(collection) do
+      {:ok, deleted_collection} ->
+        maybe_delete_collection_assets(deleted_collection.image_filename)
+        {:ok, deleted_collection}
+    end
   rescue
     error in Ecto.ConstraintError ->
       case error.constraint do
@@ -62,5 +68,66 @@ defmodule CaHeoShop.Collections do
 
   def change_collection(%Collection{} = collection, attrs \\ %{}) do
     Collection.changeset(collection, attrs)
+  end
+
+  def update_collection_image(%Collection{} = collection, image_filename)
+      when is_binary(image_filename) do
+    collection
+    |> Ecto.Changeset.change(image_filename: image_filename, has_thumbnail: false)
+    |> Repo.update()
+  end
+
+  def clear_collection_image(%Collection{} = collection) do
+    collection
+    |> Ecto.Changeset.change(image_filename: nil, has_thumbnail: nil)
+    |> Repo.update()
+  end
+
+  def mark_collection_thumbnail_generated(%Collection{} = collection) do
+    collection
+    |> Ecto.Changeset.change(has_thumbnail: true)
+    |> Repo.update()
+  end
+
+  def list_collections_pending_thumbnail do
+    Collection
+    |> where([c], c.has_thumbnail == false and not is_nil(c.image_filename))
+    |> Repo.all()
+  end
+
+  def replace_collection_image(%Collection{} = collection, upload_meta) do
+    old_image_filename = collection.image_filename
+
+    case Uploads.store_collection_image(collection.id, upload_meta) do
+      {:ok, new_image_filename} ->
+        case update_collection_image(collection, new_image_filename) do
+          {:ok, updated_collection} ->
+            maybe_delete_collection_assets(old_image_filename)
+            {:ok, updated_collection}
+
+          {:error, %Ecto.Changeset{} = changeset} ->
+            maybe_delete_collection_assets(new_image_filename)
+            {:error, changeset}
+        end
+
+      {:error, message} when is_binary(message) ->
+        {:error, message}
+    end
+  end
+
+  defp maybe_delete_collection_assets(nil), do: :ok
+
+  defp maybe_delete_collection_assets(image_filename) do
+    case Uploads.delete_collection_assets(image_filename) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning(
+          "failed to delete collection assets for #{image_filename}: #{inspect(reason)}"
+        )
+
+        :ok
+    end
   end
 end

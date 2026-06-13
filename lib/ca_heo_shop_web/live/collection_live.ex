@@ -3,6 +3,7 @@ defmodule CaHeoShopWeb.CollectionLive do
 
   alias CaHeoShop.Collections
   alias CaHeoShop.Collections.Collection
+  alias CaHeoShop.Uploads
   alias CaHeoShopWeb.AdminLive
 
   @impl true
@@ -14,6 +15,11 @@ defmodule CaHeoShopWeb.CollectionLive do
       |> assign(:selected_collection, %Collection{})
       |> assign(:collection_delete_open, false)
       |> assign(:collection_form, to_form(Collections.change_collection(%Collection{})))
+      |> allow_upload(:collection_image,
+        accept: ~w(.png .jpg .jpeg),
+        max_entries: 1,
+        max_file_size: 1_000_000
+      )
 
     {:ok, socket}
   end
@@ -35,6 +41,63 @@ defmodule CaHeoShopWeb.CollectionLive do
 
   def handle_event("save_collection", %{"collection" => params}, socket) do
     save_collection(socket, socket.assigns.live_action, params)
+  end
+
+  def handle_event("validate_collection_image_upload", _params, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("upload_collection_image", _params, socket) do
+    errors = upload_errors(socket.assigns.uploads.collection_image)
+
+    cond do
+      errors != [] ->
+        {:noreply, put_flash(socket, :error, upload_error_message(List.first(errors)))}
+
+      uploaded_entries(socket, :collection_image) == {[], []} ->
+        {:noreply, put_flash(socket, :error, "Please select an image file to upload")}
+
+      true ->
+        result =
+          consume_uploaded_entries(socket, :collection_image, fn meta, entry ->
+            case validate_upload_entry(entry) do
+              :ok ->
+                case Collections.replace_collection_image(socket.assigns.selected_collection, %{
+                       path: meta.path,
+                       client_name: entry.client_name
+                     }) do
+                  {:ok, collection} -> {:ok, {:ok, collection}}
+                  {:error, %Ecto.Changeset{} = changeset} -> {:ok, {:error, changeset}}
+                  {:error, message} -> {:ok, {:error, message}}
+                end
+
+              {:error, message} ->
+                {:postpone, message}
+            end
+          end)
+          |> List.first()
+
+        case result do
+          {:ok, collection} ->
+            {:noreply,
+             socket
+             |> assign(:selected_collection, collection)
+             |> assign(:collection_form, to_form(Collections.change_collection(collection)))
+             |> put_flash(:info, "Collection image uploaded")}
+
+          {:error, %Ecto.Changeset{} = changeset} ->
+            {:noreply,
+             socket
+             |> assign(:collection_form, to_form(changeset))
+             |> put_flash(:error, "Unable to update the collection image")}
+
+          {:error, message} when is_binary(message) ->
+            {:noreply, put_flash(socket, :error, message)}
+
+          _ ->
+            {:noreply, put_flash(socket, :error, "Unable to read the uploaded image")}
+        end
+    end
   end
 
   def handle_event("open_collection_delete", %{"slug" => slug}, socket) do
@@ -79,12 +142,14 @@ defmodule CaHeoShopWeb.CollectionLive do
               collection={@selected_collection}
               form={@collection_form}
               mode={:new}
+              uploads={@uploads}
             />
           <% :collection_edit -> %>
             <.collection_form_page
               collection={@selected_collection}
               form={@collection_form}
               mode={:edit}
+              uploads={@uploads}
             />
         <% end %>
       </AdminLive.admin_shell>
@@ -144,7 +209,7 @@ defmodule CaHeoShopWeb.CollectionLive do
                   <div class="flex items-center gap-3">
                     <%= if collection.image_filename do %>
                       <img
-                        src={collection.image_filename}
+                        src={Uploads.public_collection_image_path(collection.image_filename)}
                         alt=""
                         class="size-10 rounded-box object-cover"
                       />
@@ -236,6 +301,7 @@ defmodule CaHeoShopWeb.CollectionLive do
   attr :collection, :any, required: true
   attr :form, :any, required: true
   attr :mode, :atom, required: true
+  attr :uploads, :map, required: true
 
   def collection_form_page(assigns) do
     assigns =
@@ -271,7 +337,6 @@ defmodule CaHeoShopWeb.CollectionLive do
               <.input field={@form[:name_vi]} label="Vietnamese name" />
               <.input field={@form[:name_en]} label="English name" />
               <.input field={@form[:slug]} label="Slug" />
-              <.input field={@form[:image_filename]} label="Image filename" />
               <.input
                 field={@form[:description_vi]}
                 type="textarea"
@@ -303,24 +368,72 @@ defmodule CaHeoShopWeb.CollectionLive do
         </div>
       </div>
 
-      <aside class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-          <h2 class="card-title text-base">Image Preview</h2>
-          <div class="flex aspect-square items-center justify-center rounded-box border border-dashed border-base-300 bg-base-200">
-            <%= if @collection.image_filename do %>
-              <img
-                src={@collection.image_filename}
-                alt=""
-                class="size-full rounded-box object-cover"
-              />
-            <% else %>
-              <.icon name="hero-photo" class="size-10 text-base-content/40" />
-            <% end %>
+      <aside class="grid gap-6">
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body">
+            <h2 class="card-title text-base">Image Preview</h2>
+            <div class="flex aspect-square items-center justify-center rounded-box border border-dashed border-base-300 bg-base-200">
+              <%= if @collection.image_filename do %>
+                <img
+                  src={Uploads.public_collection_image_path(@collection.image_filename)}
+                  alt=""
+                  class="size-full rounded-box object-cover"
+                />
+              <% else %>
+                <.icon name="hero-photo" class="size-10 text-base-content/40" />
+              <% end %>
+            </div>
+            <p class="text-sm text-base-content/60">
+              Uploads replace the current collection image. Thumbnail generation runs after the upload is saved.
+            </p>
           </div>
-          <p class="text-sm text-base-content/60">
-            Use an existing storefront asset path. File upload is not implemented here.
-          </p>
         </div>
+
+        <%= if @mode == :edit and @collection.id do %>
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body">
+              <h2 class="card-title text-base">Upload Collection Image</h2>
+              <form
+                id="collection-image-form"
+                phx-change="validate_collection_image_upload"
+                phx-submit="upload_collection_image"
+                class="mt-2"
+              >
+                <div class="space-y-3">
+                  <.live_file_input
+                    upload={@uploads.collection_image}
+                    class="file-input file-input-bordered w-full"
+                  />
+                  <div
+                    :for={err <- upload_errors(@uploads.collection_image)}
+                    class="text-sm text-error"
+                  >
+                    {upload_error_message(err)}
+                  </div>
+                  <div
+                    :for={entry <- @uploads.collection_image.entries}
+                    class="rounded-box bg-base-200 p-3 text-sm"
+                  >
+                    <p class="font-medium">{entry.client_name}</p>
+                    <p class="text-base-content/60">{entry.progress}%</p>
+                    <div
+                      :for={err <- upload_errors(@uploads.collection_image, entry)}
+                      class="mt-1 text-error"
+                    >
+                      {upload_error_message(err)}
+                    </div>
+                  </div>
+                  <p class="text-xs text-base-content/60">
+                    PNG, JPG, or JPEG only. Maximum file size: 1MB.
+                  </p>
+                  <div class="flex justify-end">
+                    <button class="btn btn-primary btn-sm" type="submit">Upload image</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        <% end %>
       </aside>
     </section>
     """
@@ -402,4 +515,19 @@ defmodule CaHeoShopWeb.CollectionLive do
       "Unable to delete this collection"
     end
   end
+
+  defp validate_upload_entry(entry) do
+    cond do
+      not String.starts_with?(entry.client_type || "", "image/") ->
+        {:error, "Only image files are allowed"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp upload_error_message(:too_large), do: "File must be 1MB or smaller"
+  defp upload_error_message(:not_accepted), do: "Only PNG, JPG, and JPEG files are allowed"
+  defp upload_error_message(message) when is_binary(message), do: message
+  defp upload_error_message(_error), do: "Invalid upload"
 end
