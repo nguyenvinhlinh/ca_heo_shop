@@ -438,7 +438,7 @@ defmodule CaHeoShopWeb.CollectionLive do
                     :for={entry <- @uploads.collection_image.entries}
                     class="rounded-box bg-base-200 p-3 text-sm"
                   >
-                    <p class="font-medium">{entry.client_name}</p>
+                    <p class="font-medium w-64 truncate">{entry.client_name}</p>
                     <p class="text-base-content/60">{entry.progress}%</p>
                     <div
                       :for={err <- upload_errors(@uploads.collection_image, entry)}
