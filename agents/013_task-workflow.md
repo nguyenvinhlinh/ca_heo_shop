@@ -1,10 +1,16 @@
-[DONE] ✅ [13/06/2026 08:15] 032_create-product-variants-table.md
+[todo] 036-admin_product_index_page.md
+
+
+
 
 [Backlog] 033_update-users-with-role-fullname.md
 
 [backlog] 034_allow-login-w-username-and-email.md
 
 [backlog] 035_add-role-based-route-authorization.md
+
+
+[DONE] ✅ [13/06/2026 08:15] 032_create-product-variants-table.md
 
 [DONE] ✅ [13/06/2026 07:55] 031_create-product-images-table.md
 
