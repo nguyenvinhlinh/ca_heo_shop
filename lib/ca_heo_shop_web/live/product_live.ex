@@ -11,7 +11,7 @@ defmodule CaHeoShopWeb.ProductLive do
   def mount(_params, _session, socket) do
     socket =
       socket
-      |> assign(:page_title, "Admin Products")
+      |> assign(:page_title, "Products")
       |> assign(:selected_product, %Product{})
       |> assign(:product_form, to_form(Products.change_product(%Product{})))
       |> assign(:product_filters, %{
@@ -31,6 +31,7 @@ defmodule CaHeoShopWeb.ProductLive do
       case socket.assigns.live_action do
         :products -> assign_product_index(socket, params)
         :product_new -> assign_product_new(socket)
+        :product_show -> assign_product_show(socket, params)
       end
 
     {:noreply, socket}
@@ -113,6 +114,8 @@ defmodule CaHeoShopWeb.ProductLive do
               form={@product_form}
               collection_options={@product_form_collection_options}
             />
+          <% :product_show -> %>
+            <.product_show_page product={@selected_product} />
         <% end %>
       </AdminLive.admin_shell>
     </Layouts.app>
@@ -271,7 +274,7 @@ defmodule CaHeoShopWeb.ProductLive do
                 </td>
                 <td class="text-right">
                   <AdminLive.row_actions
-                    view={~p"/products/#{product.slug}"}
+                    view={~p"/admin/products/#{product.id}"}
                     edit={~p"/admin/products/#{product.slug}/edit"}
                     delete={~p"/admin/products/#{product.slug}/delete"}
                   />
@@ -358,10 +361,99 @@ defmodule CaHeoShopWeb.ProductLive do
     """
   end
 
+  attr :product, Product, required: true
+
+  def product_show_page(assigns) do
+    ~H"""
+    <AdminLive.page_header
+      title="Product detail"
+      section="Ecommerce"
+      description="Review the base product information before variants and image management are added."
+    >
+      <:actions>
+        <.link navigate={~p"/admin/products"} class="btn btn-ghost btn-sm">Back to products</.link>
+      </:actions>
+    </AdminLive.page_header>
+
+    <section class="mt-6 space-y-6">
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body gap-5">
+          <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div class="space-y-2">
+              <p class="text-sm font-medium uppercase tracking-[0.2em] text-base-content/50">
+                Product summary
+              </p>
+              <div>
+                <h2 class="text-2xl font-semibold">{primary_product_name(@product)}</h2>
+                <p class="mt-1 text-sm text-base-content/70">{secondary_product_name(@product)}</p>
+              </div>
+            </div>
+            <div class="badge badge-soft badge-primary">ID #{@product.id}</div>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+            <.detail_item label="Collection" value={product_collection_label(@product.collection)} />
+            <.detail_item label="Slug" value={"/#{@product.slug}"} />
+            <.detail_item label="English name" value={display_text(@product.name_en)} />
+            <.detail_item label="Vietnamese name" value={display_text(@product.name_vi)} />
+          </div>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body gap-5">
+          <div>
+            <h2 class="card-title text-base">Product content</h2>
+            <p class="text-sm text-base-content/60">
+              Base product descriptions only. Variants and image management will be added later.
+            </p>
+          </div>
+
+          <div class="grid gap-4 2xl:grid-cols-2">
+            <.detail_block
+              title="English description"
+              value={long_text_or_placeholder(@product.description_en)}
+            />
+            <.detail_block
+              title="Vietnamese description"
+              value={long_text_or_placeholder(@product.description_vi)}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+    """
+  end
+
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+
+  def detail_item(assigns) do
+    ~H"""
+    <div class="rounded-box bg-base-200/50 p-4">
+      <p class="text-xs font-medium uppercase tracking-[0.16em] text-base-content/50">{@label}</p>
+      <p class="mt-2 text-sm text-base-content">{@value}</p>
+    </div>
+    """
+  end
+
+  attr :title, :string, required: true
+  attr :value, :string, required: true
+
+  def detail_block(assigns) do
+    ~H"""
+    <div class="rounded-box border border-base-300 p-4">
+      <p class="text-sm font-medium">{@title}</p>
+      <p class="mt-3 whitespace-pre-wrap text-sm leading-6 text-base-content/80">{@value}</p>
+    </div>
+    """
+  end
+
   defp assign_product_index(socket, params) do
     product_index = Products.list_admin_products(params)
 
     socket
+    |> assign(:page_title, "Products")
     |> assign(:products, product_index.entries)
     |> assign(:page, product_index.page)
     |> assign(:per_page, product_index.per_page)
@@ -382,9 +474,18 @@ defmodule CaHeoShopWeb.ProductLive do
 
   defp assign_product_new(socket) do
     socket
+    |> assign(:page_title, "New product")
     |> assign(:selected_product, %Product{})
     |> assign(:product_form, to_form(Products.change_product(%Product{})))
     |> assign(:product_form_collection_options, product_form_collection_options())
+  end
+
+  defp assign_product_show(socket, %{"id" => id}) do
+    product = Products.get_admin_product!(id)
+
+    socket
+    |> assign(:page_title, "Product detail")
+    |> assign(:selected_product, product)
   end
 
   defp product_collection_options do
@@ -448,6 +549,31 @@ defmodule CaHeoShopWeb.ProductLive do
 
   defp present?(value), do: is_binary(value) and String.trim(value) != ""
 
+  defp display_text(value) when is_binary(value) and value != "", do: String.trim(value)
+  defp display_text(_value), do: "-"
+
+  defp long_text_or_placeholder(value) when is_binary(value) and value != "",
+    do: String.trim(value)
+
+  defp long_text_or_placeholder(_value), do: "No description"
+
+  defp primary_product_name(product) do
+    cond do
+      present?(product.name_vi) -> product.name_vi
+      present?(product.name_en) -> product.name_en
+      true -> "Unnamed product"
+    end
+  end
+
+  defp secondary_product_name(product) do
+    cond do
+      present?(product.name_vi) and present?(product.name_en) -> product.name_en
+      present?(product.name_vi) -> product.name_vi
+      present?(product.name_en) -> product.name_en
+      true -> "No secondary name"
+    end
+  end
+
   defp format_vnd(value) when is_integer(value) do
     value
     |> Integer.to_string()
@@ -463,4 +589,5 @@ defmodule CaHeoShopWeb.ProductLive do
   end
 
   defp format_datetime(_value), do: "-"
+
 end

@@ -97,6 +97,12 @@ defmodule CaHeoShop.Products do
   def get_product_image!(id), do: Repo.get!(ProductImage, id)
   def get_product_variant!(id), do: Repo.get!(ProductVariant, id)
 
+  def get_admin_product!(id) do
+    Product
+    |> Repo.get!(id)
+    |> Repo.preload(:collection)
+  end
+
   def get_product_by_slug!(slug) when is_binary(slug) do
     Repo.get_by!(Product, slug: slug)
   end

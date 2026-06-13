@@ -93,8 +93,47 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "No image"
     assert html =~ "No variants"
     assert html =~ "Showing products 1-2 of 2"
+    assert html =~ "/admin/products/#{product.id}"
     refute html =~ "Export mock CSV"
     refute html =~ "Bulk action"
+  end
+
+  test "renders admin product detail page with base product information", %{conn: conn} do
+    collection =
+      collection_fixture(
+        name_vi: "Linh kien ban",
+        name_en: "Desk Parts",
+        nav_display_order: 0
+      )
+
+    product =
+      product_fixture(
+        collection: collection,
+        slug: "magnetic-cable-clip",
+        name_vi: "Kem cap nam cham",
+        name_en: "Magnetic Cable Clip",
+        description_vi: "Giu day gon gang tren ban lam viec.",
+        description_en: "Keeps desk cables organized."
+      )
+
+    {:ok, _view, html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    assert html =~ "Product detail"
+    assert html =~ "Product summary"
+    assert html =~ "ID ##{product.id}"
+    assert html =~ "Kem cap nam cham"
+    assert html =~ "Magnetic Cable Clip"
+    assert html =~ "/magnetic-cable-clip"
+    assert html =~ "Linh kien ban"
+    assert html =~ "Keeps desk cables organized."
+    assert html =~ "Giu day gon gang tren ban lam viec."
+    assert html =~ "English description"
+    assert html =~ "Vietnamese description"
+    {english_pos, _} = :binary.match(html, "English description")
+    {vietnamese_pos, _} = :binary.match(html, "Vietnamese description")
+    assert english_pos < vietnamese_pos
+    refute html =~ "Create product"
+    refute html =~ "No variants"
   end
 
   test "renders new product page", %{conn: conn} do

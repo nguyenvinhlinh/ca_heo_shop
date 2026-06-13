@@ -1,4 +1,4 @@
-[backlog] 039-01_admin_product_detail_shell.md
+[DONE] ✅ [13/06/2026 11:58] 039-01_admin_product_detail_shell.md
 
 [backlog] 039-02_admin_product_variants_readonly_table.md
 
