@@ -5,7 +5,7 @@ defmodule CaHeoShop.CartsTest do
   alias CaHeoShop.Carts.CartItem
 
   import CaHeoShop.AccountsFixtures
-  import CaHeoShop.ProductVariantsFixtures
+  import CaHeoShop.ProductsFixtures
 
   describe "cart_items" do
     test "change_cart_item/2 requires customer_id, product_variant_id, and quantity" do
@@ -31,7 +31,7 @@ defmodule CaHeoShop.CartsTest do
 
     test "add_cart_item/3 enforces unique customer and product_variant" do
       customer = user_fixture()
-      product_variant = product_variant_fixture()
+      product_variant = product_variant_fixture(product_fixture())
 
       assert {:ok, _cart_item} = Carts.add_cart_item(customer, product_variant, 1)
       assert {:ok, cart_item} = Carts.add_cart_item(customer, product_variant, 2)
@@ -41,7 +41,7 @@ defmodule CaHeoShop.CartsTest do
     end
 
     test "add_cart_item/3 enforces customer foreign key" do
-      product_variant = product_variant_fixture()
+      product_variant = product_variant_fixture(product_fixture())
 
       assert {:error, changeset} = Carts.add_cart_item(-1, product_variant, 1)
       assert "does not exist" in errors_on(changeset).customer_id
@@ -56,7 +56,7 @@ defmodule CaHeoShop.CartsTest do
 
     test "update_cart_item_quantity/2 rejects quantities below one" do
       customer = user_fixture()
-      product_variant = product_variant_fixture()
+      product_variant = product_variant_fixture(product_fixture())
       {:ok, cart_item} = Carts.add_cart_item(customer, product_variant, 1)
 
       assert {:error, changeset} = Carts.update_cart_item_quantity(cart_item, 0)
@@ -66,8 +66,8 @@ defmodule CaHeoShop.CartsTest do
     test "clear_cart/1 deletes only the customer's items" do
       customer = user_fixture()
       other_customer = user_fixture()
-      product_variant = product_variant_fixture()
-      other_product_variant = product_variant_fixture(variant_name: "Other")
+      product_variant = product_variant_fixture(product_fixture())
+      other_product_variant = product_variant_fixture(product_fixture(), %{variant_name: "Other"})
 
       {:ok, _cart_item} = Carts.add_cart_item(customer, product_variant, 1)
       {:ok, other_cart_item} = Carts.add_cart_item(other_customer, other_product_variant, 1)

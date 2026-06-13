@@ -11,9 +11,9 @@
 # and so on) as they will fail if something goes wrong.
 
 alias CaHeoShop.Collections.Collection
-alias CaHeoShop.ProductVariants.ProductVariant
 alias CaHeoShop.Products.Product
 alias CaHeoShop.Products.ProductImage
+alias CaHeoShop.Products.ProductVariant
 alias CaHeoShop.Repo
 
 upsert_collection = fn attrs ->

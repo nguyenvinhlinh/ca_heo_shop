@@ -8,7 +8,7 @@ defmodule CaHeoShop.Carts do
 
   alias CaHeoShop.Accounts.User
   alias CaHeoShop.Carts.CartItem
-  alias CaHeoShop.ProductVariants.ProductVariant
+  alias CaHeoShop.Products.ProductVariant
 
   def list_cart_items(%User{id: customer_id}) do
     list_cart_items(customer_id)

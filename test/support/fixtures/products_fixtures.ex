@@ -64,4 +64,27 @@ defmodule CaHeoShop.ProductsFixtures do
 
     product_image
   end
+
+  def valid_product_variant_attributes(product, attrs \\ %{}) do
+    attrs
+    |> Map.new()
+    |> Enum.into(%{
+      product_id: product.id,
+      variant_name: "Matte black PLA",
+      production_cost: 45_000,
+      selling_price: 120_000,
+      stock_quantity: 8,
+      image_filename: "/images/storefront/product-organizer.svg",
+      display_order: 0
+    })
+  end
+
+  def product_variant_fixture(product, attrs \\ %{}) do
+    {:ok, product_variant} =
+      product
+      |> valid_product_variant_attributes(attrs)
+      |> Products.create_product_variant()
+
+    product_variant
+  end
 end

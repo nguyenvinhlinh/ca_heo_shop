@@ -3,7 +3,7 @@ defmodule CaHeoShop.Carts.CartItem do
   import Ecto.Changeset
 
   alias CaHeoShop.Accounts.User
-  alias CaHeoShop.ProductVariants.ProductVariant
+  alias CaHeoShop.Products.ProductVariant
 
   schema "cart_items" do
     field :quantity, :integer

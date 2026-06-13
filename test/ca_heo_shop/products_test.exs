@@ -4,6 +4,7 @@ defmodule CaHeoShop.ProductsTest do
   alias CaHeoShop.Products
   alias CaHeoShop.Products.Product
   alias CaHeoShop.Products.ProductImage
+  alias CaHeoShop.Products.ProductVariant
 
   import CaHeoShop.CollectionsFixtures
   import CaHeoShop.ProductsFixtures
@@ -227,6 +228,128 @@ defmodule CaHeoShop.ProductsTest do
 
       assert_raise Ecto.NoResultsError, fn ->
         Products.get_product_image!(product_image.id)
+      end
+    end
+  end
+
+  describe "product variants" do
+    test "create_product_variant/1 requires product_id, variant_name, and selling_price" do
+      changeset = Products.change_product_variant(%ProductVariant{}, %{})
+
+      assert %{
+               product_id: ["can't be blank"],
+               variant_name: ["can't be blank"],
+               selling_price: ["can't be blank"]
+             } = errors_on(changeset)
+    end
+
+    test "create_product_variant/1 creates a valid variant" do
+      product = product_fixture()
+
+      assert {:ok, product_variant} =
+               Products.create_product_variant(%{
+                 product_id: product.id,
+                 variant_name: "PLA Red",
+                 production_cost: 10_000,
+                 selling_price: 50_000,
+                 stock_quantity: 5,
+                 image_filename: "pla-red.jpg",
+                 display_order: 0
+               })
+
+      assert product_variant.variant_name == "PLA Red"
+    end
+
+    test "create_product_variant/1 enforces unique variant_name per product" do
+      product = product_fixture()
+      product_variant_fixture(product, %{variant_name: "Black"})
+
+      assert {:error, changeset} =
+               Products.create_product_variant(
+                 valid_product_variant_attributes(product, %{variant_name: "Black"})
+               )
+
+      assert "has already been taken" in errors_on(changeset).variant_name
+    end
+
+    test "create_product_variant/1 enforces product foreign key" do
+      assert {:error, changeset} =
+               Products.create_product_variant(
+                 valid_product_variant_attributes(product_fixture(), %{product_id: -1})
+               )
+
+      assert "does not exist" in errors_on(changeset).product_id
+    end
+
+    test "create_product_variant/1 rejects negative numeric fields" do
+      changeset =
+        Products.change_product_variant(%ProductVariant{}, %{
+          product_id: 1,
+          variant_name: "Black",
+          production_cost: -1,
+          selling_price: -1,
+          stock_quantity: -1,
+          display_order: -1
+        })
+
+      assert "must be greater than or equal to 0" in errors_on(changeset).production_cost
+      assert "must be greater than or equal to 0" in errors_on(changeset).selling_price
+      assert "must be greater than or equal to 0" in errors_on(changeset).stock_quantity
+      assert "must be greater than or equal to 0" in errors_on(changeset).display_order
+    end
+
+    test "list_product_variants/1 returns only variants for the given product ordered by display_order then inserted_at" do
+      product = product_fixture()
+      other_product = product_fixture()
+      second = product_variant_fixture(product, %{variant_name: "Second", display_order: 1})
+      first = product_variant_fixture(product, %{variant_name: "First", display_order: 0})
+      _other = product_variant_fixture(other_product, %{variant_name: "Other", display_order: 0})
+
+      assert Products.list_product_variants(product) == [first, second]
+    end
+
+    test "update_product_variant/2 updates editable fields" do
+      product = product_fixture()
+      product_variant = product_variant_fixture(product, %{variant_name: "Original"})
+
+      assert {:ok, updated_product_variant} =
+               Products.update_product_variant(product_variant, %{
+                 variant_name: "Updated",
+                 selling_price: 55_000,
+                 display_order: 1
+               })
+
+      assert updated_product_variant.variant_name == "Updated"
+      assert updated_product_variant.selling_price == 55_000
+      assert updated_product_variant.display_order == 1
+    end
+
+    test "delete_product_variant/1 deletes the variant" do
+      product = product_fixture()
+      product_variant = product_variant_fixture(product)
+
+      assert {:ok, %ProductVariant{}} = Products.delete_product_variant(product_variant)
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Products.get_product_variant!(product_variant.id)
+      end
+    end
+
+    test "change_product_variant/1 returns a changeset" do
+      product = product_fixture()
+      product_variant = product_variant_fixture(product)
+
+      assert %Ecto.Changeset{} = Products.change_product_variant(product_variant)
+    end
+
+    test "deleting a product deletes its variants" do
+      product = product_fixture()
+      product_variant = product_variant_fixture(product)
+
+      assert {:ok, %Product{}} = Products.delete_product(product)
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Products.get_product_variant!(product_variant.id)
       end
     end
   end

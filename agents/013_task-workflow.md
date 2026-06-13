@@ -1,6 +1,4 @@
-[DONE] ✅ [13/06/2026 07:55] 031_create-product-images-table.md
-
-[BACKLOG] 032_create-product-variants-table.md
+[DONE] ✅ [13/06/2026 08:15] 032_create-product-variants-table.md
 
 [Backlog] 033_update-users-with-role-fullname.md
 
@@ -8,6 +6,7 @@
 
 [backlog] 035_add-role-based-route-authorization.md
 
+[DONE] ✅ [13/06/2026 07:55] 031_create-product-images-table.md
 
 [DONE] ✅ [13/06/2026 07:05] 030_create-product-table-nullable-collection.md
 

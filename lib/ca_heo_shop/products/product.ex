@@ -4,6 +4,7 @@ defmodule CaHeoShop.Products.Product do
 
   alias CaHeoShop.Collections.Collection
   alias CaHeoShop.Products.ProductImage
+  alias CaHeoShop.Products.ProductVariant
 
   schema "products" do
     field :slug, :string
@@ -14,6 +15,7 @@ defmodule CaHeoShop.Products.Product do
 
     belongs_to :collection, Collection
     has_many :product_images, ProductImage
+    has_many :product_variants, ProductVariant
 
     timestamps(type: :utc_datetime)
   end

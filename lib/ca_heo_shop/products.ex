@@ -9,6 +9,7 @@ defmodule CaHeoShop.Products do
   alias CaHeoShop.Collections.Collection
   alias CaHeoShop.Products.Product
   alias CaHeoShop.Products.ProductImage
+  alias CaHeoShop.Products.ProductVariant
 
   def list_products do
     Repo.all(Product)
@@ -50,8 +51,20 @@ defmodule CaHeoShop.Products do
     |> Repo.all()
   end
 
+  def list_product_variants(%Product{id: product_id}) do
+    list_product_variants(product_id)
+  end
+
+  def list_product_variants(product_id) do
+    ProductVariant
+    |> where([variant], variant.product_id == ^product_id)
+    |> order_by([variant], asc: variant.display_order, asc: variant.inserted_at)
+    |> Repo.all()
+  end
+
   def get_product!(id), do: Repo.get!(Product, id)
   def get_product_image!(id), do: Repo.get!(ProductImage, id)
+  def get_product_variant!(id), do: Repo.get!(ProductVariant, id)
 
   def get_product_by_slug!(slug) when is_binary(slug) do
     Repo.get_by!(Product, slug: slug)
@@ -66,6 +79,12 @@ defmodule CaHeoShop.Products do
   def create_product_image(attrs \\ %{}) do
     %ProductImage{}
     |> ProductImage.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def create_product_variant(attrs \\ %{}) do
+    %ProductVariant{}
+    |> ProductVariant.changeset(attrs)
     |> Repo.insert()
   end
 
@@ -90,6 +109,12 @@ defmodule CaHeoShop.Products do
     |> Repo.update()
   end
 
+  def update_product_variant(%ProductVariant{} = product_variant, attrs) do
+    product_variant
+    |> ProductVariant.changeset(attrs)
+    |> Repo.update()
+  end
+
   def mark_product_image_thumbnail_created(%ProductImage{} = product_image) do
     update_product_image(product_image, %{has_thumbnail: true})
   end
@@ -106,11 +131,19 @@ defmodule CaHeoShop.Products do
     Repo.delete(product_image)
   end
 
+  def delete_product_variant(%ProductVariant{} = product_variant) do
+    Repo.delete(product_variant)
+  end
+
   def change_product(%Product{} = product, attrs \\ %{}) do
     Product.changeset(product, attrs)
   end
 
   def change_product_image(%ProductImage{} = product_image, attrs \\ %{}) do
     ProductImage.changeset(product_image, attrs)
+  end
+
+  def change_product_variant(%ProductVariant{} = product_variant, attrs \\ %{}) do
+    ProductVariant.changeset(product_variant, attrs)
   end
 end

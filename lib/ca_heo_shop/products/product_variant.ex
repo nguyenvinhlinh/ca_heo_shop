@@ -1,4 +1,4 @@
-defmodule CaHeoShop.ProductVariants.ProductVariant do
+defmodule CaHeoShop.Products.ProductVariant do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -6,11 +6,11 @@ defmodule CaHeoShop.ProductVariants.ProductVariant do
 
   schema "product_variants" do
     field :variant_name, :string
-    field :production_cost, :integer
+    field :production_cost, :integer, default: 0
     field :selling_price, :integer
-    field :stock_quantity, :integer
+    field :stock_quantity, :integer, default: 0
     field :image_filename, :string
-    field :display_order, :integer
+    field :display_order, :integer, default: 0
 
     belongs_to :product, Product
 
@@ -41,11 +41,15 @@ defmodule CaHeoShop.ProductVariants.ProductVariant do
     |> validate_number(:selling_price, greater_than_or_equal_to: 0)
     |> validate_number(:stock_quantity, greater_than_or_equal_to: 0)
     |> validate_number(:display_order, greater_than_or_equal_to: 0)
-    |> unique_constraint(:variant_name, name: :product_variants_product_id_variant_name_index)
     |> foreign_key_constraint(:product_id)
-    |> check_constraint(:production_cost, name: :production_cost_must_be_non_negative)
-    |> check_constraint(:selling_price, name: :selling_price_must_be_non_negative)
-    |> check_constraint(:stock_quantity, name: :stock_quantity_must_be_non_negative)
-    |> check_constraint(:display_order, name: :display_order_must_be_non_negative)
+    |> unique_constraint(:variant_name,
+      name: :product_variants_product_id_variant_name_index
+    )
+    |> check_constraint(:production_cost,
+      name: :product_variants_production_cost_non_negative
+    )
+    |> check_constraint(:selling_price, name: :product_variants_selling_price_non_negative)
+    |> check_constraint(:stock_quantity, name: :product_variants_stock_quantity_non_negative)
+    |> check_constraint(:display_order, name: :product_variants_display_order_non_negative)
   end
 end
