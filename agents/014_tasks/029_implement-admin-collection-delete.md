@@ -2,13 +2,13 @@
 
 ## Objective
 
-Implement real logic for:
+Implement real logic for collection delete from:
 
 ```text
-/admin/collections/:slug/delete
+/admin/collections
 ```
 
-Replace the current static mock delete confirmation with a real delete flow using the `CaHeoShop.Collections` context.
+Replace the current static mock delete confirmation with a real in-page dialog delete flow using the `CaHeoShop.Collections` context.
 
 ## Required Reading
 
@@ -39,10 +39,10 @@ lib/ca_heo_shop/collections/collection.ex
 
 ## Route Scope
 
-Keep this page inside the existing authenticated admin LiveView route:
+Keep collection delete behavior inside the existing authenticated admin LiveView route:
 
 ```text
-live "/admin/collections/:slug/delete", AdminLive, :collection_delete
+live "/admin/collections", AdminLive, :collections
 ```
 
 This route must remain in:
@@ -62,13 +62,13 @@ Do not redesign the generic delete UI unless required to support real behavior.
 
 ### Record Loading
 
-Load the collection by slug using:
+When the user clicks delete from the index table, load the collection by slug using:
 
 ```text
 CaHeoShop.Collections.get_collection_by_slug!/1
 ```
 
-The confirmation page must display real collection information, not mock data.
+The dialog must display real collection information, not mock data.
 
 At minimum, show:
 
@@ -80,7 +80,7 @@ slug
 
 ### Delete Action
 
-The confirmation page must perform a real delete through:
+The dialog confirm action must perform a real delete through:
 
 ```text
 CaHeoShop.Collections.delete_collection/1
@@ -124,9 +124,11 @@ If implementation requires improving `CaHeoShop.Collections.delete_collection/1`
 
 ## UI Rules
 
-Keep the existing admin delete confirmation pattern.
+Keep the delete interaction on the collections index page.
 
-Do not replace it with a different page architecture.
+Use a dialog or modal pattern that fits the existing admin UI.
+
+Do not navigate to a dedicated delete path.
 
 Adjust only what is necessary to wire the real record and the real delete action.
 
@@ -140,7 +142,8 @@ lib/ca_heo_shop_web/live/admin_live.ex
 
 Recommended approach:
 
-* load the collection for `:collection_delete`
+* open a dialog from the collections index
+* load the selected collection into LiveView state
 * wire the confirm action to a real LiveView event
 * handle success and failure explicitly
 
@@ -148,17 +151,17 @@ Recommended approach:
 
 Add LiveView tests for:
 
-* authenticated user can open `/admin/collections/:slug/delete`
-* page renders the real collection identity
+* authenticated user can open the delete dialog from `/admin/collections`
+* dialog renders the real collection identity
 * successful confirm deletes the row
 * user returns to `/admin/collections` after successful delete
 * delete failure is handled when products still belong to the collection
 
 ## Acceptance Criteria
 
-* `/admin/collections/:slug/delete` performs a real delete
-* page uses real collection data
+* `/admin/collections` provides real collection delete behavior through a dialog
+* dialog uses real collection data
 * product foreign key restriction is handled cleanly
-* successful delete returns to the collections index
+* successful delete returns to the collections index state
 * tests pass
 * `mix precommit` passes

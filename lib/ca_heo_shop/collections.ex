@@ -9,7 +9,9 @@ defmodule CaHeoShop.Collections do
   alias CaHeoShop.Collections.Collection
 
   def list_collections do
-    Repo.all(Collection)
+    Collection
+    |> order_by([c], asc_nulls_last: c.nav_display_order, asc: c.id)
+    |> Repo.all()
   end
 
   def list_nav_collections do
@@ -39,6 +41,23 @@ defmodule CaHeoShop.Collections do
 
   def delete_collection(%Collection{} = collection) do
     Repo.delete(collection)
+  rescue
+    error in Ecto.ConstraintError ->
+      case error.constraint do
+        "products_collection_id_fkey" ->
+          changeset =
+            collection
+            |> Ecto.Changeset.change()
+            |> Ecto.Changeset.add_error(
+              :collection_id,
+              "cannot delete this collection while products still belong to it"
+            )
+
+          {:error, changeset}
+
+        _other ->
+          reraise error, __STACKTRACE__
+      end
   end
 
   def change_collection(%Collection{} = collection, attrs \\ %{}) do
