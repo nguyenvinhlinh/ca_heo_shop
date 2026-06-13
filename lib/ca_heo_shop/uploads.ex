@@ -84,6 +84,20 @@ defmodule CaHeoShop.Uploads do
     end
   end
 
+  def collection_display_image_path(%{image_filename: nil}), do: nil
+
+  def collection_display_image_path(%{image_filename: image_filename, has_thumbnail: true})
+      when is_binary(image_filename) do
+    image_filename
+    |> thumbnail_filename()
+    |> public_collection_image_path()
+  end
+
+  def collection_display_image_path(%{image_filename: image_filename})
+      when is_binary(image_filename) do
+    public_collection_image_path(image_filename)
+  end
+
   def static_asset_path?(value) when is_binary(value), do: String.starts_with?(value, "/")
 
   defp assets_root_path do

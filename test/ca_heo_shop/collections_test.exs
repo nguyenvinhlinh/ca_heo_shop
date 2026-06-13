@@ -88,6 +88,25 @@ defmodule CaHeoShop.CollectionsTest do
       refute File.exists?(original_path)
       refute File.exists?(thumbnail_path)
     end
+
+    test "collection_display_image_path/1 prefers thumbnail when available" do
+      assert Uploads.collection_display_image_path(%{
+               image_filename: "42_example.jpg",
+               has_thumbnail: true
+             }) == "/collection_images/42_example_500x500px.jpg"
+    end
+
+    test "collection_display_image_path/1 falls back to original when thumbnail is pending or absent" do
+      assert Uploads.collection_display_image_path(%{
+               image_filename: "42_example.jpg",
+               has_thumbnail: false
+             }) == "/collection_images/42_example.jpg"
+
+      assert Uploads.collection_display_image_path(%{
+               image_filename: "42_example.jpg",
+               has_thumbnail: nil
+             }) == "/collection_images/42_example.jpg"
+    end
   end
 
   defp set_collection_assets_path(_context) do

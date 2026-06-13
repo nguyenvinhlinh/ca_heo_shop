@@ -114,6 +114,23 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Hidden"
   end
 
+  test "uses thumbnail image on collection index when collection has_thumbnail is true", %{
+    conn: conn
+  } do
+    collection =
+      collection_fixture(
+        slug: "thumb-preview",
+        image_filename: "123_thumb-preview.jpg"
+      )
+
+    {:ok, _collection} = Collections.mark_collection_thumbnail_generated(collection)
+
+    {:ok, _view, html} = live(conn, ~p"/admin/collections")
+
+    assert html =~ "/collection_images/123_thumb-preview_500x500px.jpg"
+    refute html =~ ~s(src="/collection_images/123_thumb-preview.jpg")
+  end
+
   test "orders collections by nav_display_order then id on index", %{conn: conn} do
     first =
       collection_fixture(
@@ -221,6 +238,23 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert html =~ "Collection updated"
     assert Collections.get_collection_by_slug!("new-collection").name_vi == "Moi"
+  end
+
+  test "uses thumbnail image on collection edit preview when collection has_thumbnail is true", %{
+    conn: conn
+  } do
+    collection =
+      collection_fixture(
+        slug: "edit-thumb-preview",
+        image_filename: "999_edit-thumb-preview.jpg"
+      )
+
+    {:ok, _collection} = Collections.mark_collection_thumbnail_generated(collection)
+
+    {:ok, _view, html} = live(conn, ~p"/admin/collections/#{collection.slug}/edit")
+
+    assert html =~ "/collection_images/999_edit-thumb-preview_500x500px.jpg"
+    refute html =~ ~s(src="/collection_images/999_edit-thumb-preview.jpg")
   end
 
   test "uploads a collection image from the edit page", %{conn: conn} do

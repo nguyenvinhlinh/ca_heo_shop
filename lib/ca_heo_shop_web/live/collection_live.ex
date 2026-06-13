@@ -209,7 +209,7 @@ defmodule CaHeoShopWeb.CollectionLive do
                   <div class="flex items-center gap-3">
                     <%= if collection.image_filename do %>
                       <img
-                        src={Uploads.public_collection_image_path(collection.image_filename)}
+                        src={Uploads.collection_display_image_path(collection)}
                         alt=""
                         class="size-10 rounded-box object-cover"
                       />
@@ -375,7 +375,7 @@ defmodule CaHeoShopWeb.CollectionLive do
             <div class="flex aspect-square items-center justify-center rounded-box border border-dashed border-base-300 bg-base-200">
               <%= if @collection.image_filename do %>
                 <img
-                  src={Uploads.public_collection_image_path(@collection.image_filename)}
+                  src={Uploads.collection_display_image_path(@collection)}
                   alt=""
                   class="size-full rounded-box object-cover"
                 />
