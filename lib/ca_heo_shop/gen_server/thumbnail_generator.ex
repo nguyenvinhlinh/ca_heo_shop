@@ -4,7 +4,7 @@ defmodule CaHeoShop.GenServer.ThumbnailGenerator do
   alias CaHeoShop.Collections
   alias CaHeoShop.Uploads
 
-  @interval_ms 60_000
+  @interval_ms 5_000
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
