@@ -213,6 +213,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     refute html =~ "/images/storefront/other-product.jpg"
     assert html =~ "Product variants"
     assert html =~ "New variant"
+    refute html =~ "New product variant"
     assert html =~ "First variant"
     assert html =~ "Second same order"
     assert html =~ "Later variant"
@@ -488,6 +489,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "No product images"
     assert html =~ "Product variants"
     assert html =~ "New variant"
+    refute html =~ "New product variant"
     assert html =~ "No variants"
     assert html =~ ~s(class="btn btn-xs" disabled)
     assert html =~ ">Copy</button>"
@@ -496,6 +498,137 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ ">View original</button>"
     refute html =~ "Edit"
     refute html =~ "Remove"
+  end
+
+  test "clicking new variant opens the dialog with the next display order", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "variant-dialog",
+        name_vi: "San pham mo dialog",
+        name_en: "Variant dialog product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    product_variant_fixture(product, %{
+      variant_name_vi: "Bien the truoc",
+      variant_name_en: "Previous variant",
+      display_order: 4
+    })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    html =
+      view
+      |> element("#open-new-variant-dialog")
+      |> render_click()
+
+    assert html =~ "New product variant"
+    assert html =~ "Vietnamese variant name"
+    assert html =~ "English variant name"
+    assert html =~ "Production cost"
+    assert html =~ "Selling price"
+    assert html =~ "Stock quantity"
+    assert html =~ "Image filename"
+    assert html =~ "Display order"
+    assert html =~ "Create variant"
+    assert html =~ ~s(id="close-new-variant-dialog")
+    assert html =~ ~s(name="product_variant[display_order]")
+    assert html =~ ~s(value="5")
+  end
+
+  test "creates a product variant from the detail dialog and ignores submitted product_id", %{
+    conn: conn
+  } do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "create-variant",
+        name_vi: "San pham tao bien the",
+        name_en: "Create variant product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    other_product = product_fixture(collection_id: nil, slug: "other-variant-parent")
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-new-variant-dialog")
+      |> render_click()
+
+    html =
+      render_submit(view, "save-variant", %{
+        "product_variant" => %{
+          "product_id" => Integer.to_string(other_product.id),
+          "variant_name_vi" => "PLA Xanh",
+          "variant_name_en" => "Blue PLA",
+          "production_cost" => "15000",
+          "selling_price" => "45000",
+          "stock_quantity" => "7",
+          "image_filename" => "",
+          "display_order" => "0"
+        }
+      })
+
+    assert html =~ "Product variant created successfully."
+    refute html =~ "New product variant"
+    refute html =~ "No variants"
+    assert html =~ "PLA Xanh"
+    assert html =~ "Blue PLA"
+    assert html =~ "15,000 VND"
+    assert html =~ "45,000 VND"
+    assert html =~ "7"
+    assert html =~ "—"
+    assert html =~ "Edit"
+    assert html =~ "Remove"
+
+    [created_variant] = CaHeoShop.Products.list_product_variants(product)
+    assert created_variant.product_id == product.id
+    assert created_variant.image_filename == nil
+    assert CaHeoShop.Products.list_product_variants(other_product) == []
+  end
+
+  test "invalid product variant submit keeps the dialog open and shows errors", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "invalid-variant",
+        name_vi: "San pham loi bien the",
+        name_en: "Invalid variant product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-new-variant-dialog")
+      |> render_click()
+
+    html =
+      view
+      |> form("#product-variant-form",
+        product_variant: %{
+          variant_name_vi: "",
+          variant_name_en: "",
+          production_cost: "-1",
+          selling_price: "",
+          stock_quantity: "-1",
+          image_filename: "",
+          display_order: "-1"
+        }
+      )
+      |> render_submit()
+
+    assert html =~ "New product variant"
+    assert html =~ "can&#39;t be blank"
+    assert html =~ "must be greater than or equal to 0"
+    assert CaHeoShop.Products.list_product_variants(product) == []
   end
 
   test "renders new product page", %{conn: conn} do

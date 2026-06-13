@@ -641,6 +641,24 @@ defmodule CaHeoShop.ProductsTest do
       assert product_variant.variant_name_en == "Red PLA"
     end
 
+    test "create_product_variant/1 allows nil image_filename" do
+      product = product_fixture()
+
+      assert {:ok, product_variant} =
+               Products.create_product_variant(%{
+                 product_id: product.id,
+                 variant_name_vi: "PLA Xam",
+                 variant_name_en: "Gray PLA",
+                 production_cost: 20_000,
+                 selling_price: 70_000,
+                 stock_quantity: 3,
+                 image_filename: nil,
+                 display_order: 0
+               })
+
+      assert product_variant.image_filename == nil
+    end
+
     test "create_product_variant/1 enforces unique variant_name_vi per product" do
       product = product_fixture()
       product_variant_fixture(product, %{variant_name_vi: "PLA Do", variant_name_en: "Red PLA"})
@@ -764,6 +782,36 @@ defmodule CaHeoShop.ProductsTest do
         })
 
       assert Products.list_product_variants(product) == [first, second]
+    end
+
+    test "next_product_variant_display_order/1 returns 0 when product has no variants" do
+      product = product_fixture()
+
+      assert Products.next_product_variant_display_order(product) == 0
+    end
+
+    test "next_product_variant_display_order/1 returns max display_order plus one" do
+      product = product_fixture()
+
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the dau",
+        variant_name_en: "First",
+        display_order: 0
+      })
+
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the cao hon",
+        variant_name_en: "Higher",
+        display_order: 4
+      })
+
+      product_variant_fixture(product, %{
+        variant_name_vi: "Bien the chen giua",
+        variant_name_en: "Middle",
+        display_order: 2
+      })
+
+      assert Products.next_product_variant_display_order(product.id) == 5
     end
 
     test "update_product_variant/2 updates editable fields including bilingual names" do

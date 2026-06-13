@@ -3,6 +3,7 @@ defmodule CaHeoShopWeb.ProductLive do
 
   alias CaHeoShop.Collections
   alias CaHeoShop.Products.Product
+  alias CaHeoShop.Products.ProductVariant
   alias CaHeoShop.Products
   alias CaHeoShop.Uploads
   alias CaHeoShopWeb.AdminLive
@@ -13,7 +14,10 @@ defmodule CaHeoShopWeb.ProductLive do
       socket
       |> assign(:page_title, "Products")
       |> assign(:selected_product, %Product{})
+      |> assign(:selected_product_image, nil)
       |> assign(:product_form, to_form(Products.change_product(%Product{})))
+      |> assign(:variant_form, to_form(Products.change_product_variant(%ProductVariant{})))
+      |> assign(:show_variant_dialog, false)
       |> assign(:product_filters, %{
         "collection" => "ALL",
         "page" => 1,
@@ -124,6 +128,52 @@ defmodule CaHeoShopWeb.ProductLive do
     end
   end
 
+  def handle_event("open-new-variant-dialog", _params, socket) do
+    {:noreply, open_variant_dialog(socket)}
+  end
+
+  def handle_event("close-new-variant-dialog", _params, socket) do
+    {:noreply, close_variant_dialog(socket)}
+  end
+
+  def handle_event("validate-variant", %{"product_variant" => params}, socket) do
+    changeset =
+      socket.assigns.selected_product
+      |> new_product_variant()
+      |> Products.change_product_variant(product_variant_form_params(params))
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :variant_form, to_form(changeset))}
+  end
+
+  def handle_event("save-variant", %{"product_variant" => params}, socket) do
+    product = socket.assigns.selected_product
+
+    case Products.create_product_variant(product_variant_create_attrs(product, params)) do
+      {:ok, _product_variant} ->
+        refreshed_product = Products.get_admin_product!(product.id)
+
+        {:noreply,
+         socket
+         |> assign(:selected_product, refreshed_product)
+         |> assign(
+           :selected_product_image,
+           refreshed_selected_product_image(
+             refreshed_product.product_images,
+             socket.assigns.selected_product_image
+           )
+         )
+         |> close_variant_dialog()
+         |> put_flash(:info, "Product variant created successfully.")}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply,
+         socket
+         |> assign(:show_variant_dialog, true)
+         |> assign(:variant_form, to_form(Map.put(changeset, :action, :validate)))}
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -152,6 +202,8 @@ defmodule CaHeoShopWeb.ProductLive do
             <.product_show_page
               product={@selected_product}
               selected_image={@selected_product_image}
+              variant_form={@variant_form}
+              show_variant_dialog={@show_variant_dialog}
             />
         <% end %>
       </AdminLive.admin_shell>
@@ -400,6 +452,8 @@ defmodule CaHeoShopWeb.ProductLive do
 
   attr :product, Product, required: true
   attr :selected_image, :map, default: nil
+  attr :variant_form, :any, required: true
+  attr :show_variant_dialog, :boolean, required: true
 
   def product_show_page(assigns) do
     ~H"""
@@ -467,10 +521,17 @@ defmodule CaHeoShopWeb.ProductLive do
               <div>
                 <h2 class="card-title text-base">Product variants</h2>
                 <p class="text-sm text-base-content/60">
-                  Read-only variants for the current product, ordered for admin review.
+                  Create and review variants for the current product, ordered for admin review.
                 </p>
               </div>
-              <button type="button" class="btn btn-primary btn-sm" disabled>New variant</button>
+              <button
+                id="open-new-variant-dialog"
+                type="button"
+                class="btn btn-primary btn-sm"
+                phx-click="open-new-variant-dialog"
+              >
+                New variant
+              </button>
             </div>
 
             <div class="overflow-auto">
@@ -529,6 +590,102 @@ defmodule CaHeoShopWeb.ProductLive do
         />
       </div>
     </section>
+
+    <.product_variant_dialog
+      show={@show_variant_dialog}
+      form={@variant_form}
+      product={@product}
+    />
+    """
+  end
+
+  attr :show, :boolean, required: true
+  attr :form, :any, required: true
+  attr :product, Product, required: true
+
+  def product_variant_dialog(assigns) do
+    ~H"""
+    <div :if={@show} class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        class="absolute inset-0 bg-base-content/40 backdrop-blur-sm"
+        aria-label="Close new product variant dialog"
+        phx-click="close-new-variant-dialog"
+      />
+
+      <div class="relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-auto rounded-box bg-base-100 shadow-xl">
+        <div class="border-b border-base-300 px-6 py-4">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-lg font-semibold">New product variant</h2>
+              <p class="mt-1 text-sm text-base-content/60">
+                Create a variant for {primary_product_name(@product)}.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-5">
+          <.form
+            for={@form}
+            id="product-variant-form"
+            phx-change="validate-variant"
+            phx-submit="save-variant"
+          >
+            <input type="hidden" name="product_variant[product_id]" value={@product.id} />
+
+            <div class="grid gap-4 md:grid-cols-2">
+              <.input
+                field={@form[:variant_name_vi]}
+                type="text"
+                label="Vietnamese variant name"
+              />
+              <.input field={@form[:variant_name_en]} type="text" label="English variant name" />
+              <.input
+                field={@form[:production_cost]}
+                type="number"
+                label="Production cost"
+                min="0"
+              />
+              <.input
+                field={@form[:selling_price]}
+                type="number"
+                label="Selling price"
+                min="0"
+              />
+              <.input
+                field={@form[:stock_quantity]}
+                type="number"
+                label="Stock quantity"
+                min="0"
+              />
+              <.input
+                field={@form[:display_order]}
+                type="number"
+                label="Display order"
+                min="0"
+              />
+              <.input
+                field={@form[:image_filename]}
+                type="text"
+                label="Image filename"
+              />
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                class="btn btn-ghost"
+                phx-click="close-new-variant-dialog"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Create variant</button>
+            </div>
+          </.form>
+        </div>
+      </div>
+    </div>
     """
   end
 
@@ -763,7 +920,10 @@ defmodule CaHeoShopWeb.ProductLive do
     socket
     |> assign(:page_title, "New product")
     |> assign(:selected_product, %Product{})
+    |> assign(:selected_product_image, nil)
     |> assign(:product_form, to_form(Products.change_product(%Product{})))
+    |> assign(:variant_form, to_form(Products.change_product_variant(%ProductVariant{})))
+    |> assign(:show_variant_dialog, false)
     |> assign(:product_form_collection_options, product_form_collection_options())
   end
 
@@ -774,6 +934,8 @@ defmodule CaHeoShopWeb.ProductLive do
     |> assign(:page_title, "Product detail")
     |> assign(:selected_product, product)
     |> assign(:selected_product_image, default_selected_product_image(product))
+    |> assign(:variant_form, to_form(new_product_variant_changeset(product)))
+    |> assign(:show_variant_dialog, false)
   end
 
   defp product_collection_options do
@@ -837,6 +999,47 @@ defmodule CaHeoShopWeb.ProductLive do
   defp refreshed_selected_product_image(product_images, _selected_image),
     do: List.first(product_images)
 
+  defp open_variant_dialog(socket) do
+    product = socket.assigns.selected_product
+
+    socket
+    |> assign(:show_variant_dialog, true)
+    |> assign(:variant_form, to_form(new_product_variant_changeset(product)))
+  end
+
+  defp close_variant_dialog(socket) do
+    product = socket.assigns.selected_product
+
+    socket
+    |> assign(:show_variant_dialog, false)
+    |> assign(:variant_form, to_form(new_product_variant_changeset(product)))
+  end
+
+  defp new_product_variant_changeset(product) do
+    product
+    |> new_product_variant()
+    |> Products.change_product_variant()
+  end
+
+  defp new_product_variant(product) do
+    %ProductVariant{
+      product_id: product.id,
+      display_order: Products.next_product_variant_display_order(product.id)
+    }
+  end
+
+  defp product_variant_form_params(params) do
+    params
+    |> Map.new()
+    |> Map.put("image_filename", blank_to_nil(Map.get(params, "image_filename")))
+  end
+
+  defp product_variant_create_attrs(product, params) do
+    params
+    |> product_variant_form_params()
+    |> Map.put("product_id", product.id)
+  end
+
   defp product_image_thumbnail_path(%{filename: filename, has_thumbnail: true})
        when is_binary(filename) do
     Uploads.thumbnail_filename(filename)
@@ -893,6 +1096,15 @@ defmodule CaHeoShopWeb.ProductLive do
 
   defp display_image_filename(value) when is_binary(value) and value != "", do: value
   defp display_image_filename(_value), do: "—"
+
+  defp blank_to_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed_value -> trimmed_value
+    end
+  end
+
+  defp blank_to_nil(value), do: value
 
   defp primary_product_name(product) do
     cond do

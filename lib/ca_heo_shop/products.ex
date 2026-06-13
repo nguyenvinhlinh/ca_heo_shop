@@ -94,6 +94,21 @@ defmodule CaHeoShop.Products do
     |> Repo.all()
   end
 
+  def next_product_variant_display_order(%Product{id: product_id}) do
+    next_product_variant_display_order(product_id)
+  end
+
+  def next_product_variant_display_order(product_id) do
+    ProductVariant
+    |> where([variant], variant.product_id == ^product_id)
+    |> select([variant], max(variant.display_order))
+    |> Repo.one()
+    |> case do
+      nil -> 0
+      display_order -> display_order + 1
+    end
+  end
+
   def get_product!(id), do: Repo.get!(Product, id)
   def get_product_image!(id), do: Repo.get!(ProductImage, id)
   def get_product_variant!(id), do: Repo.get!(ProductVariant, id)
