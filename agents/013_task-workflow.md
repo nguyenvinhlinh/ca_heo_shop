@@ -1,11 +1,26 @@
-[DONE] ✅ [13/06/2026 17:35] 038_create-product-page.md
+[backlog] 039-01_admin_product_detail_shell.md
 
+[backlog] 039-02_admin_product_variants_readonly_table.md
+
+[backlog] 039-03_admin_product_image_preview_and_thumbnail_list.md
+
+[backlog] 039-04_admin_product_image_preview_selection.md
+
+[backlog] 039-05_admin_product_image_drag_drop_ordering.md
+
+[backlog] 039-06_admin_create_product_variant_dialog.md
+
+[backlog] 039-07_admin_edit_product_variant_dialog.md
+
+[backlog] 039-08_admin_delete_product_variant.md
 
 [Backlog] 033_update-users-with-role-fullname.md
 
 [backlog] 034_allow-login-w-username-and-email.md
 
 [backlog] 035_add-role-based-route-authorization.md
+
+[DONE] ✅ [13/06/2026 17:35] 038_create-product-page.md
 
 [DONE] ✅ [13/06/2026 16:59] 037_add_bilingual_variant_names_to_product_variants.md
 
