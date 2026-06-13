@@ -199,8 +199,7 @@ defmodule CaHeoShopWeb.ProductLive do
                 </td>
                 <td class="min-w-72">
                   <div class="space-y-1">
-                  <p class="font-medium">[VN]{product.name_vi}</p>
-                  <p class="font-medium">[EN]{product.name_en}</p>
+                    <p class="font-medium">[EN]{product.name_en}</p>
                     <p class="text-xs text-base-content/60">/{product.slug}</p>
                     <p class="text-xs text-base-content/60">
                       Collection: {product_collection_label(product.collection)}
@@ -219,7 +218,7 @@ defmodule CaHeoShopWeb.ProductLive do
                       :for={variant <- product.product_variants}
                       class="rounded-box bg-base-200/60 px-3 py-2 text-sm"
                     >
-                      <p class="font-medium">{variant.variant_name}</p>
+                      <p class="font-medium">[VN]{variant.variant_name_vi}</p>
                       <div class="mt-1 grid gap-1 text-xs text-base-content/70 md:grid-cols-3">
                         <span>Stock: {variant.stock_quantity}</span>
                         <span>Cost: {format_vnd(variant.production_cost)}</span>

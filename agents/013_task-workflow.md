@@ -1,4 +1,4 @@
-[TODO] 037_add_bilingual_variant_names_to_product_variants.md
+[DONE] ✅ [13/06/2026 16:59] 037_add_bilingual_variant_names_to_product_variants.md
 
 
 

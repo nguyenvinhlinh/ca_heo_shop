@@ -194,7 +194,7 @@ upsert_product_image.(products["prototype-print-request"], %{
 
 upsert_product_variant = fn product, attrs ->
   product_variant =
-    Repo.get_by(ProductVariant, product_id: product.id, variant_name: attrs.variant_name) ||
+    Repo.get_by(ProductVariant, product_id: product.id, variant_name_vi: attrs.variant_name_vi) ||
       %ProductVariant{}
 
   product_variant
@@ -203,7 +203,8 @@ upsert_product_variant = fn product, attrs ->
 end
 
 upsert_product_variant.(products["modular-desk-organizer"], %{
-  variant_name: "Matte black PLA",
+  variant_name_vi: "PLA den mo",
+  variant_name_en: "Matte black PLA",
   production_cost: 45_000,
   selling_price: 120_000,
   stock_quantity: 8,
@@ -212,7 +213,8 @@ upsert_product_variant.(products["modular-desk-organizer"], %{
 })
 
 upsert_product_variant.(products["modular-desk-organizer"], %{
-  variant_name: "White PLA",
+  variant_name_vi: "PLA trang",
+  variant_name_en: "White PLA",
   production_cost: 45_000,
   selling_price: 120_000,
   stock_quantity: 6,
@@ -221,7 +223,8 @@ upsert_product_variant.(products["modular-desk-organizer"], %{
 })
 
 upsert_product_variant.(products["modular-desk-organizer"], %{
-  variant_name: "Custom color request",
+  variant_name_vi: "Yeu cau mau tuy chinh",
+  variant_name_en: "Custom color request",
   production_cost: 55_000,
   selling_price: 150_000,
   stock_quantity: 0,
@@ -230,7 +233,8 @@ upsert_product_variant.(products["modular-desk-organizer"], %{
 })
 
 upsert_product_variant.(products["starter-electronics-kit"], %{
-  variant_name: "Basic kit",
+  variant_name_vi: "Bo kit co ban",
+  variant_name_en: "Basic kit",
   production_cost: 95_000,
   selling_price: 180_000,
   stock_quantity: 10,
@@ -239,7 +243,8 @@ upsert_product_variant.(products["starter-electronics-kit"], %{
 })
 
 upsert_product_variant.(products["starter-electronics-kit"], %{
-  variant_name: "Kit with sensors",
+  variant_name_vi: "Bo kit kem cam bien",
+  variant_name_en: "Kit with sensors",
   production_cost: 145_000,
   selling_price: 260_000,
   stock_quantity: 5,
@@ -248,7 +253,8 @@ upsert_product_variant.(products["starter-electronics-kit"], %{
 })
 
 upsert_product_variant.(products["custom-plant-holder"], %{
-  variant_name: "Small cup",
+  variant_name_vi: "Cup nho",
+  variant_name_en: "Small cup",
   production_cost: 28_000,
   selling_price: 75_000,
   stock_quantity: 12,
@@ -257,7 +263,8 @@ upsert_product_variant.(products["custom-plant-holder"], %{
 })
 
 upsert_product_variant.(products["custom-plant-holder"], %{
-  variant_name: "Medium cup",
+  variant_name_vi: "Cup vua",
+  variant_name_en: "Medium cup",
   production_cost: 38_000,
   selling_price: 95_000,
   stock_quantity: 9,
@@ -266,7 +273,8 @@ upsert_product_variant.(products["custom-plant-holder"], %{
 })
 
 upsert_product_variant.(products["custom-plant-holder"], %{
-  variant_name: "Custom diameter",
+  variant_name_vi: "Duong kinh tuy chinh",
+  variant_name_en: "Custom diameter",
   production_cost: 50_000,
   selling_price: 140_000,
   stock_quantity: 0,
@@ -275,7 +283,8 @@ upsert_product_variant.(products["custom-plant-holder"], %{
 })
 
 upsert_product_variant.(products["prototype-print-request"], %{
-  variant_name: "Send STL file",
+  variant_name_vi: "Gui file STL",
+  variant_name_en: "Send STL file",
   production_cost: 60_000,
   selling_price: 150_000,
   stock_quantity: 0,
@@ -284,7 +293,8 @@ upsert_product_variant.(products["prototype-print-request"], %{
 })
 
 upsert_product_variant.(products["prototype-print-request"], %{
-  variant_name: "Design assistance",
+  variant_name_vi: "Ho tro thiet ke",
+  variant_name_en: "Design assistance",
   production_cost: 120_000,
   selling_price: 300_000,
   stock_quantity: 0,
@@ -293,7 +303,8 @@ upsert_product_variant.(products["prototype-print-request"], %{
 })
 
 upsert_product_variant.(products["prototype-print-request"], %{
-  variant_name: "Repair part",
+  variant_name_vi: "Chi tiet sua chua",
+  variant_name_en: "Repair part",
   production_cost: 70_000,
   selling_price: 180_000,
   stock_quantity: 0,

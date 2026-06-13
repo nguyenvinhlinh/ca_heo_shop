@@ -5,7 +5,8 @@ defmodule CaHeoShop.Products.ProductVariant do
   alias CaHeoShop.Products.Product
 
   schema "product_variants" do
-    field :variant_name, :string
+    field :variant_name_vi, :string
+    field :variant_name_en, :string
     field :production_cost, :integer, default: 0
     field :selling_price, :integer
     field :stock_quantity, :integer, default: 0
@@ -22,7 +23,8 @@ defmodule CaHeoShop.Products.ProductVariant do
     product_variant
     |> cast(attrs, [
       :product_id,
-      :variant_name,
+      :variant_name_vi,
+      :variant_name_en,
       :production_cost,
       :selling_price,
       :stock_quantity,
@@ -31,19 +33,25 @@ defmodule CaHeoShop.Products.ProductVariant do
     ])
     |> validate_required([
       :product_id,
-      :variant_name,
+      :variant_name_vi,
+      :variant_name_en,
       :production_cost,
       :selling_price,
       :stock_quantity,
       :display_order
     ])
+    |> validate_length(:variant_name_vi, max: 160)
+    |> validate_length(:variant_name_en, max: 160)
     |> validate_number(:production_cost, greater_than_or_equal_to: 0)
     |> validate_number(:selling_price, greater_than_or_equal_to: 0)
     |> validate_number(:stock_quantity, greater_than_or_equal_to: 0)
     |> validate_number(:display_order, greater_than_or_equal_to: 0)
     |> foreign_key_constraint(:product_id)
-    |> unique_constraint(:variant_name,
-      name: :product_variants_product_id_variant_name_index
+    |> unique_constraint(:variant_name_vi,
+      name: :product_variants_product_id_variant_name_vi_index
+    )
+    |> unique_constraint(:variant_name_en,
+      name: :product_variants_product_id_variant_name_en_index
     )
     |> check_constraint(:production_cost,
       name: :product_variants_production_cost_non_negative

@@ -105,14 +105,16 @@ defmodule CaHeoShop.ProductsTest do
 
       later_variant =
         product_variant_fixture(newer, %{
-          variant_name: "Variant later",
+          variant_name_vi: "Bien the sau",
+          variant_name_en: "Variant later",
           display_order: 2,
           selling_price: 90_000
         })
 
       first_variant =
         product_variant_fixture(newer, %{
-          variant_name: "Variant first",
+          variant_name_vi: "Bien the dau",
+          variant_name_en: "Variant first",
           display_order: 0,
           selling_price: 100_000
         })
@@ -389,23 +391,25 @@ defmodule CaHeoShop.ProductsTest do
   end
 
   describe "product variants" do
-    test "create_product_variant/1 requires product_id, variant_name, and selling_price" do
+    test "create_product_variant/1 requires bilingual names and selling_price" do
       changeset = Products.change_product_variant(%ProductVariant{}, %{})
 
       assert %{
                product_id: ["can't be blank"],
-               variant_name: ["can't be blank"],
+               variant_name_vi: ["can't be blank"],
+               variant_name_en: ["can't be blank"],
                selling_price: ["can't be blank"]
              } = errors_on(changeset)
     end
 
-    test "create_product_variant/1 creates a valid variant" do
+    test "create_product_variant/1 creates a valid bilingual variant" do
       product = product_fixture()
 
       assert {:ok, product_variant} =
                Products.create_product_variant(%{
                  product_id: product.id,
-                 variant_name: "PLA Red",
+                 variant_name_vi: "PLA Do",
+                 variant_name_en: "Red PLA",
                  production_cost: 10_000,
                  selling_price: 50_000,
                  stock_quantity: 5,
@@ -413,19 +417,59 @@ defmodule CaHeoShop.ProductsTest do
                  display_order: 0
                })
 
-      assert product_variant.variant_name == "PLA Red"
+      assert product_variant.variant_name_vi == "PLA Do"
+      assert product_variant.variant_name_en == "Red PLA"
     end
 
-    test "create_product_variant/1 enforces unique variant_name per product" do
+    test "create_product_variant/1 enforces unique variant_name_vi per product" do
       product = product_fixture()
-      product_variant_fixture(product, %{variant_name: "Black"})
+      product_variant_fixture(product, %{variant_name_vi: "PLA Do", variant_name_en: "Red PLA"})
 
       assert {:error, changeset} =
                Products.create_product_variant(
-                 valid_product_variant_attributes(product, %{variant_name: "Black"})
+                 valid_product_variant_attributes(product, %{
+                   variant_name_vi: "PLA Do",
+                   variant_name_en: "Red PLA 2"
+                 })
                )
 
-      assert "has already been taken" in errors_on(changeset).variant_name
+      assert "has already been taken" in errors_on(changeset).variant_name_vi
+    end
+
+    test "create_product_variant/1 enforces unique variant_name_en per product" do
+      product = product_fixture()
+
+      product_variant_fixture(product, %{variant_name_vi: "PLA Den", variant_name_en: "Black PLA"})
+
+      assert {:error, changeset} =
+               Products.create_product_variant(
+                 valid_product_variant_attributes(product, %{
+                   variant_name_vi: "PLA Den 2",
+                   variant_name_en: "Black PLA"
+                 })
+               )
+
+      assert "has already been taken" in errors_on(changeset).variant_name_en
+    end
+
+    test "same bilingual names can exist under different products" do
+      first_product = product_fixture()
+      second_product = product_fixture()
+
+      product_variant_fixture(first_product, %{
+        variant_name_vi: "PLA Trang",
+        variant_name_en: "White PLA"
+      })
+
+      assert {:ok, product_variant} =
+               Products.create_product_variant(
+                 valid_product_variant_attributes(second_product, %{
+                   variant_name_vi: "PLA Trang",
+                   variant_name_en: "White PLA"
+                 })
+               )
+
+      assert product_variant.product_id == second_product.id
     end
 
     test "create_product_variant/1 enforces product foreign key" do
@@ -441,7 +485,8 @@ defmodule CaHeoShop.ProductsTest do
       changeset =
         Products.change_product_variant(%ProductVariant{}, %{
           product_id: 1,
-          variant_name: "Black",
+          variant_name_vi: "Den",
+          variant_name_en: "Black",
           production_cost: -1,
           selling_price: -1,
           stock_quantity: -1,
@@ -454,28 +499,72 @@ defmodule CaHeoShop.ProductsTest do
       assert "must be greater than or equal to 0" in errors_on(changeset).display_order
     end
 
+    test "create_product_variant/1 validates bilingual name length" do
+      product = product_fixture()
+      long_name = String.duplicate("a", 161)
+
+      changeset =
+        Products.change_product_variant(%ProductVariant{}, %{
+          product_id: product.id,
+          variant_name_vi: long_name,
+          variant_name_en: long_name,
+          production_cost: 0,
+          selling_price: 1,
+          stock_quantity: 0,
+          display_order: 0
+        })
+
+      assert "should be at most 160 character(s)" in errors_on(changeset).variant_name_vi
+      assert "should be at most 160 character(s)" in errors_on(changeset).variant_name_en
+    end
+
     test "list_product_variants/1 returns only variants for the given product ordered by display_order then inserted_at" do
       product = product_fixture()
       other_product = product_fixture()
-      second = product_variant_fixture(product, %{variant_name: "Second", display_order: 1})
-      first = product_variant_fixture(product, %{variant_name: "First", display_order: 0})
-      _other = product_variant_fixture(other_product, %{variant_name: "Other", display_order: 0})
+
+      second =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the thu hai",
+          variant_name_en: "Second",
+          display_order: 1
+        })
+
+      first =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Bien the dau",
+          variant_name_en: "First",
+          display_order: 0
+        })
+
+      _other =
+        product_variant_fixture(other_product, %{
+          variant_name_vi: "Bien the khac",
+          variant_name_en: "Other",
+          display_order: 0
+        })
 
       assert Products.list_product_variants(product) == [first, second]
     end
 
-    test "update_product_variant/2 updates editable fields" do
+    test "update_product_variant/2 updates editable fields including bilingual names" do
       product = product_fixture()
-      product_variant = product_variant_fixture(product, %{variant_name: "Original"})
+
+      product_variant =
+        product_variant_fixture(product, %{
+          variant_name_vi: "Ban dau",
+          variant_name_en: "Original"
+        })
 
       assert {:ok, updated_product_variant} =
                Products.update_product_variant(product_variant, %{
-                 variant_name: "Updated",
+                 variant_name_vi: "Da cap nhat",
+                 variant_name_en: "Updated EN",
                  selling_price: 55_000,
                  display_order: 1
                })
 
-      assert updated_product_variant.variant_name == "Updated"
+      assert updated_product_variant.variant_name_vi == "Da cap nhat"
+      assert updated_product_variant.variant_name_en == "Updated EN"
       assert updated_product_variant.selling_price == 55_000
       assert updated_product_variant.display_order == 1
     end

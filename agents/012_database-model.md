@@ -44,7 +44,7 @@ No business-domain migrations, schemas, contexts, Repo queries, seeds, cart pers
 |--------------------------|--------------------------------------------------------|-----------------------------------|----------------------------------------------------------------|--------------------------------------------------------|
 | `collections`            | `CaHeoShop.Collections.Collection`                     | `CaHeoShop.Collections`           | Catalog grouping and storefront navigation.                    | `research/010_table-collections.md`                    |
 | `products`               | `CaHeoShop.Products.Product`                           | `CaHeoShop.Products`              | Product identity, bilingual content, slug, collection link.    | `research/011-table-products-product-images.md`        |
-| `product_variants`       | `CaHeoShop.Products.ProductVariant`                    | `CaHeoShop.Products`              | Sellable product options with price, cost, stock, image.       | `research/011-table-products-product-images.md`        |
+| `product_variants`       | `CaHeoShop.Products.ProductVariant`                    | `CaHeoShop.Products`              | Sellable bilingual product options with price, cost, stock, and image. | `research/011-table-products-product-images.md`        |
 | `product_images`         | `CaHeoShop.Products.ProductImage`                      | `CaHeoShop.Products`              | Product-level gallery images.                                  | `research/011-table-products-product-images.md`        |
 | `cart_items`             | `CaHeoShop.Carts.CartItem`                             | `CaHeoShop.Carts`                 | Active authenticated customer cart line items.                 | `research/012-table-cart-items.md`                     |
 | `sale_orders`            | `CaHeoShop.Sales.SaleOrder`                            | `CaHeoShop.Sales`                 | Order header, customer/recipient snapshots, totals, notes.     | `research/013_table-sale-orders.md`                    |
@@ -121,6 +121,7 @@ inventory_movements.performed_by_id -> users.id
 ## Key Decisions
 
 - The customer buys a selected `product_variant`, not a generic product.
+- Product variants support bilingual display names through `variant_name_vi` and `variant_name_en`.
 - `cart_items` and `sale_order_items` should reference `product_variant_id`.
 - `sale_order_items` should snapshot product name, product slug, variant name, unit price, production cost, line total, quantity, and image filename.
 - `sale_orders` should stay focused on order header and snapshot data.
@@ -208,7 +209,8 @@ updated_at
 ```text
 id
 product_id
-variant_name
+variant_name_vi
+variant_name_en
 production_cost
 selling_price
 stock_quantity

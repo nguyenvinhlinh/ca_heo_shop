@@ -67,7 +67,12 @@ defmodule CaHeoShop.CartsTest do
       customer = user_fixture()
       other_customer = user_fixture()
       product_variant = product_variant_fixture(product_fixture())
-      other_product_variant = product_variant_fixture(product_fixture(), %{variant_name: "Other"})
+
+      other_product_variant =
+        product_variant_fixture(product_fixture(), %{
+          variant_name_vi: "Bien the khac",
+          variant_name_en: "Other"
+        })
 
       {:ok, _cart_item} = Carts.add_cart_item(customer, product_variant, 1)
       {:ok, other_cart_item} = Carts.add_cart_item(other_customer, other_product_variant, 1)

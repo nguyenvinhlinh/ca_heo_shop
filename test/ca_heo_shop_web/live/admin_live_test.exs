@@ -56,7 +56,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     )
 
     product_variant_fixture(product,
-      variant_name: "PLA Red",
+      variant_name_vi: "PLA Do",
+      variant_name_en: "Red PLA",
       stock_quantity: 10,
       production_cost: 25_000,
       selling_price: 50_000
@@ -82,7 +83,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Keyboard Stand"
     assert html =~ "/ban-phim"
     assert html =~ "Bo suu tap in 3D"
-    assert html =~ "PLA Red"
+    assert html =~ "PLA Do"
+    assert html =~ "Red PLA"
     assert html =~ "Stock: 10"
     assert html =~ "Cost: 25,000 VND"
     assert html =~ "Price: 50,000 VND"

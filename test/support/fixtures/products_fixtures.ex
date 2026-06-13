@@ -66,11 +66,19 @@ defmodule CaHeoShop.ProductsFixtures do
   end
 
   def valid_product_variant_attributes(product, attrs \\ %{}) do
+    attrs = Map.new(attrs)
+
+    variant_name_vi =
+      attrs[:variant_name_vi] || attrs["variant_name_vi"] || "PLA den mo"
+
+    variant_name_en =
+      attrs[:variant_name_en] || attrs["variant_name_en"] || "Matte black PLA"
+
     attrs
-    |> Map.new()
     |> Enum.into(%{
       product_id: product.id,
-      variant_name: "Matte black PLA",
+      variant_name_vi: variant_name_vi,
+      variant_name_en: variant_name_en,
       production_cost: 45_000,
       selling_price: 120_000,
       stock_quantity: 8,
