@@ -201,6 +201,10 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Thumbnail: yes"
     assert html =~ "Thumbnail: no"
     assert html =~ ~s(data-copy-text="/images/storefront/magnetic-cable-clip.jpg")
+    assert html =~ "/images/storefront/magnetic-cable-clip_500x500px.jpg"
+    assert html =~ ~s(data-copy-text="/images/storefront/magnetic-cable-clip_500x500px.jpg")
+    assert html =~ "Selected"
+    assert html =~ ~s(src="/images/storefront/magnetic-cable-clip-detail.jpg")
     refute html =~ "/images/storefront/magnetic-cable-clip-detail_500x500px.jpg"
     refute html =~ "/images/storefront/other-product.jpg"
     assert html =~ "Product variants"
@@ -246,6 +250,102 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert second_pos < later_pos
   end
 
+  test "selecting a product image updates the preview and selected state", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "selectable-images",
+        name_vi: "San pham co anh",
+        name_en: "Selectable images",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    first_image =
+      product_image_fixture(product, %{
+        filename: "/images/storefront/selectable-primary.jpg",
+        display_order: 0,
+        has_thumbnail: true
+      })
+
+    second_image =
+      product_image_fixture(product, %{
+        filename: "/images/storefront/selectable-secondary.jpg",
+        display_order: 1,
+        has_thumbnail: false
+      })
+
+    {:ok, view, html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    assert html =~ "/images/storefront/selectable-primary_500x500px.jpg"
+    assert html =~ ~s(data-copy-text="/images/storefront/selectable-primary.jpg")
+    assert html =~ ~s(data-copy-text="/images/storefront/selectable-primary_500x500px.jpg")
+    refute html =~ ~s(data-copy-text="/images/storefront/selectable-secondary.jpg")
+
+    html =
+      view
+      |> element(~s(button[phx-click="select-product-image"][phx-value-id="#{second_image.id}"]))
+      |> render_click()
+
+    assert html =~ "/images/storefront/selectable-secondary.jpg"
+    assert html =~ ~s(data-copy-text="/images/storefront/selectable-secondary.jpg")
+    assert html =~ ~s(src="/images/storefront/selectable-secondary.jpg")
+    refute html =~ "/images/storefront/selectable-secondary_500x500px.jpg"
+    assert html =~ ~s(class="btn btn-xs" disabled)
+    assert html =~ ">Copy</button>"
+    assert html =~ "—"
+
+    {selected_badge_pos, _} = :binary.match(html, "Selected")
+    {secondary_pos, _} = :binary.match(html, "selectable-secondary.jpg")
+    assert selected_badge_pos > secondary_pos
+
+    html =
+      view
+      |> element(~s(button[phx-click="select-product-image"][phx-value-id="#{first_image.id}"]))
+      |> render_click()
+
+    assert html =~ "/images/storefront/selectable-primary_500x500px.jpg"
+    assert html =~ ~s(data-copy-text="/images/storefront/selectable-primary.jpg")
+    assert html =~ ~s(data-copy-text="/images/storefront/selectable-primary_500x500px.jpg")
+  end
+
+  test "invalid product image selection is ignored safely", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "invalid-image-selection",
+        name_vi: "San pham an toan",
+        name_en: "Safe product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    product_image_fixture(product, %{
+      filename: "/images/storefront/safe-primary.jpg",
+      display_order: 0,
+      has_thumbnail: true
+    })
+
+    other_image =
+      product_image_fixture(product_fixture(collection_id: nil), %{
+        filename: "/images/storefront/foreign-image.jpg",
+        display_order: 0,
+        has_thumbnail: true
+      })
+
+    {:ok, view, html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    assert html =~ ~s(data-copy-text="/images/storefront/safe-primary.jpg")
+    refute html =~ "/images/storefront/foreign-image.jpg"
+
+    html =
+      view
+      |> render_click("select-product-image", %{"id" => Integer.to_string(other_image.id)})
+
+    assert html =~ ~s(data-copy-text="/images/storefront/safe-primary.jpg")
+    refute html =~ "/images/storefront/foreign-image.jpg"
+  end
+
   test "renders admin product detail empty variants state", %{conn: conn} do
     product =
       product_fixture(
@@ -268,6 +368,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "No variants"
     assert html =~ ~s(class="btn btn-xs" disabled)
     assert html =~ ">Copy</button>"
+    assert html =~ "—"
     assert html =~ ~s(class="btn btn-ghost btn-sm" disabled)
     assert html =~ ">View original</button>"
     refute html =~ "Edit"

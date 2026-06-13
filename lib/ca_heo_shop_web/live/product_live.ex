@@ -90,6 +90,16 @@ defmodule CaHeoShopWeb.ProductLive do
     end
   end
 
+  def handle_event("select-product-image", %{"id" => id}, socket) do
+    case Enum.find(socket.assigns.selected_product.product_images, &(to_string(&1.id) == id)) do
+      nil ->
+        {:noreply, socket}
+
+      product_image ->
+        {:noreply, assign(socket, :selected_product_image, product_image)}
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -115,7 +125,10 @@ defmodule CaHeoShopWeb.ProductLive do
               collection_options={@product_form_collection_options}
             />
           <% :product_show -> %>
-            <.product_show_page product={@selected_product} />
+            <.product_show_page
+              product={@selected_product}
+              selected_image={@selected_product_image}
+            />
         <% end %>
       </AdminLive.admin_shell>
     </Layouts.app>
@@ -362,6 +375,7 @@ defmodule CaHeoShopWeb.ProductLive do
   end
 
   attr :product, Product, required: true
+  attr :selected_image, :map, default: nil
 
   def product_show_page(assigns) do
     ~H"""
@@ -457,7 +471,8 @@ defmodule CaHeoShopWeb.ProductLive do
                   <tr :for={variant <- @product.product_variants} class="hover:bg-base-200/40">
                     <td class="align-top">{variant.display_order}</td>
                     <td class="align-top font-medium">
-                    {variant.variant_name_vi}</td>
+                      {variant.variant_name_vi}
+                    </td>
                     <td class="align-top text-base-content/70">{variant.variant_name_en}</td>
                     <td class="align-top">{format_vnd(variant.production_cost)}</td>
                     <td class="align-top">{format_vnd(variant.selling_price)}</td>
@@ -483,8 +498,11 @@ defmodule CaHeoShopWeb.ProductLive do
       </div>
 
       <div class="space-y-6">
-        <.product_image_preview_panel selected_image={selected_product_image(@product)} />
-        <.product_images_panel product_images={@product.product_images} />
+        <.product_image_preview_panel selected_image={@selected_image} />
+        <.product_images_panel
+          product_images={@product.product_images}
+          selected_image={@selected_image}
+        />
       </div>
     </section>
     """
@@ -505,16 +523,12 @@ defmodule CaHeoShopWeb.ProductLive do
 
         <div class="overflow-hidden rounded-box border border-base-300 bg-base-200/60">
           <%= cond do %>
-            <% preview_path = product_image_thumbnail_path(@selected_image) -> %>
+            <% preview_path = product_image_preview_path(@selected_image) -> %>
               <img
                 src={preview_path}
                 alt={@selected_image.filename}
                 class="aspect-square w-full object-cover"
               />
-            <% @selected_image -> %>
-              <div class="flex aspect-square items-center justify-center p-6 text-center text-sm text-base-content/60">
-                Thumbnail pending
-              </div>
             <% true -> %>
               <div class="flex aspect-square items-center justify-center p-6 text-center text-sm text-base-content/60">
                 No image
@@ -522,24 +536,46 @@ defmodule CaHeoShopWeb.ProductLive do
           <% end %>
         </div>
 
-        <div class="flex min-w-0 items-center gap-2">
-          <div class="min-w-0 grow rounded-box bg-base-200/60 px-3 py-2 text-sm text-base-content/80">
-            <p class="truncate">{selected_image_filename(@selected_image)}</p>
+        <div class="space-y-2">
+          <div class="flex min-w-0 items-center gap-2">
+            <div class="min-w-0 grow rounded-box bg-base-200/60 px-3 py-2 text-sm text-base-content/80">
+              <p class="truncate">{selected_image_filename(@selected_image)}</p>
+            </div>
+
+            <%= if @selected_image do %>
+              <button
+                id={"copy-product-image-filename-#{@selected_image.id}"}
+                type="button"
+                class="btn btn-xs"
+                phx-hook="CopyToClipboard"
+                data-copy-text={@selected_image.filename}
+              >
+                Copy
+              </button>
+            <% else %>
+              <button type="button" class="btn btn-xs" disabled>Copy</button>
+            <% end %>
           </div>
 
-          <%= if @selected_image do %>
-            <button
-              id={"copy-product-image-filename-#{@selected_image.id}"}
-              type="button"
-              class="btn btn-xs"
-              phx-hook="CopyToClipboard"
-              data-copy-text={@selected_image.filename}
-            >
-              Copy
-            </button>
-          <% else %>
-            <button type="button" class="btn btn-xs" disabled>Copy</button>
-          <% end %>
+          <div class="flex min-w-0 items-center gap-2">
+            <div class="min-w-0 grow rounded-box bg-base-200/60 px-3 py-2 text-sm text-base-content/80">
+              <p class="truncate">{selected_image_thumbnail_filename(@selected_image)}</p>
+            </div>
+
+            <%= if thumbnail_copy_path = product_image_thumbnail_path(@selected_image) do %>
+              <button
+                id={"copy-product-image-thumbnail-#{@selected_image.id}"}
+                type="button"
+                class="btn btn-xs"
+                phx-hook="CopyToClipboard"
+                data-copy-text={thumbnail_copy_path}
+              >
+                Copy
+              </button>
+            <% else %>
+              <button type="button" class="btn btn-xs" disabled>Copy</button>
+            <% end %>
+          </div>
         </div>
 
         <div class="flex flex-wrap gap-2">
@@ -548,7 +584,7 @@ defmodule CaHeoShopWeb.ProductLive do
           <%= if original_path = product_image_original_path(@selected_image) do %>
             <a
               href={original_path}
-              class="btn btn-ghost btn-sm"
+              class="btn btn-sm btn-primary"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -564,6 +600,7 @@ defmodule CaHeoShopWeb.ProductLive do
   end
 
   attr :product_images, :list, required: true
+  attr :selected_image, :map, default: nil
 
   def product_images_panel(assigns) do
     ~H"""
@@ -584,32 +621,45 @@ defmodule CaHeoShopWeb.ProductLive do
         </div>
 
         <div :if={@product_images != []} class="space-y-3">
-          <div
+          <button
             :for={product_image <- @product_images}
-            class="flex items-center gap-3 rounded-box border border-base-300 p-3"
+            type="button"
+            phx-click="select-product-image"
+            phx-value-id={product_image.id}
+            class={[
+              "flex w-full items-center gap-3 rounded-box border p-3 text-left transition-colors",
+              selected_product_image?(product_image, @selected_image) &&
+                "border-primary bg-primary/5",
+              !selected_product_image?(product_image, @selected_image) &&
+                "border-base-300 hover:bg-base-200/40"
+            ]}
           >
             <div class="h-14 w-14 shrink-0 overflow-hidden rounded-box bg-base-200/60">
-              <%= if thumbnail_path = product_image_thumbnail_path(product_image) do %>
+              <%= if preview_path = product_image_preview_path(product_image) do %>
                 <img
-                  src={thumbnail_path}
+                  src={preview_path}
                   alt={product_image.filename}
                   class="h-full w-full object-cover"
                 />
-              <% else %>
-                <div class="flex h-full w-full items-center justify-center text-[11px] text-base-content/60">
-                  No thumb
-                </div>
               <% end %>
             </div>
 
             <div class="min-w-0 grow">
-              <p class="truncate text-sm font-medium">{product_image.filename}</p>
+              <div class="flex items-center justify-between gap-2">
+                <p class="truncate text-sm font-medium">{product_image.filename}</p>
+                <span
+                  :if={selected_product_image?(product_image, @selected_image)}
+                  class="badge badge-primary badge-xs"
+                >
+                  Selected
+                </span>
+              </div>
               <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-base-content/60">
                 <span>Order: {product_image.display_order}</span>
                 <span>Thumbnail: {thumbnail_status_label(product_image)}</span>
               </div>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </section>
@@ -677,6 +727,7 @@ defmodule CaHeoShopWeb.ProductLive do
     socket
     |> assign(:page_title, "Product detail")
     |> assign(:selected_product, product)
+    |> assign(:selected_product_image, default_selected_product_image(product))
   end
 
   defp product_collection_options do
@@ -728,7 +779,7 @@ defmodule CaHeoShopWeb.ProductLive do
     end
   end
 
-  defp selected_product_image(product) do
+  defp default_selected_product_image(product) do
     Enum.find(product.product_images, &(&1.display_order == 0)) ||
       List.first(product.product_images)
   end
@@ -740,14 +791,32 @@ defmodule CaHeoShopWeb.ProductLive do
 
   defp product_image_thumbnail_path(_product_image), do: nil
 
+  defp product_image_preview_path(%{filename: filename, has_thumbnail: true})
+       when is_binary(filename) do
+    Uploads.thumbnail_filename(filename)
+  end
+
+  defp product_image_preview_path(%{filename: filename}) when is_binary(filename), do: filename
+  defp product_image_preview_path(_product_image), do: nil
+
   defp product_image_original_path(%{filename: filename}) when is_binary(filename), do: filename
   defp product_image_original_path(_product_image), do: nil
 
   defp selected_image_filename(%{filename: filename}) when is_binary(filename), do: filename
   defp selected_image_filename(_product_image), do: "—"
 
+  defp selected_image_thumbnail_filename(%{filename: filename, has_thumbnail: true})
+       when is_binary(filename) do
+    Uploads.thumbnail_filename(filename)
+  end
+
+  defp selected_image_thumbnail_filename(_product_image), do: "—"
+
   defp thumbnail_status_label(%{has_thumbnail: true}), do: "yes"
   defp thumbnail_status_label(_product_image), do: "no"
+
+  defp selected_product_image?(%{id: image_id}, %{id: selected_id}), do: image_id == selected_id
+  defp selected_product_image?(_product_image, _selected_image), do: false
 
   defp product_collection_label(nil), do: "No collection"
 
