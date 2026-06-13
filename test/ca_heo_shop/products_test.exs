@@ -8,11 +8,10 @@ defmodule CaHeoShop.ProductsTest do
   import CaHeoShop.ProductsFixtures
 
   describe "products" do
-    test "change_product/2 requires collection_id, slug, name_vi, and name_en" do
+    test "change_product/2 requires slug, name_vi, and name_en only" do
       changeset = Products.change_product(%Product{}, %{})
 
       assert %{
-               collection_id: ["can't be blank"],
                slug: ["can't be blank"],
                name_vi: ["can't be blank"],
                name_en: ["can't be blank"]
@@ -35,6 +34,22 @@ defmodule CaHeoShop.ProductsTest do
       assert "does not exist" in errors_on(changeset).collection_id
     end
 
+    test "create_product/1 can create a product with a collection" do
+      collection = collection_fixture()
+
+      assert {:ok, product} =
+               Products.create_product(valid_product_attributes(collection: collection))
+
+      assert product.collection_id == collection.id
+    end
+
+    test "create_product/1 can create a product without a collection" do
+      assert {:ok, product} =
+               Products.create_product(valid_product_attributes(collection_id: nil))
+
+      assert product.collection_id == nil
+    end
+
     test "list_products_by_collection/1 returns only products for the collection" do
       collection = collection_fixture()
       other_collection = collection_fixture()
@@ -44,12 +59,17 @@ defmodule CaHeoShop.ProductsTest do
       assert Products.list_products_by_collection(collection) == [product]
     end
 
-    test "creates, updates, and deletes products" do
-      collection = collection_fixture()
+    test "list_uncategorized_products/0 returns only products without a collection" do
+      uncategorized = product_fixture(collection_id: nil, name_vi: "No Collection")
+      _categorized = product_fixture(name_vi: "With Collection")
 
+      assert Products.list_uncategorized_products() == [uncategorized]
+    end
+
+    test "creates, updates, and deletes products" do
       assert {:ok, product} =
                Products.create_product(
-                 valid_product_attributes(collection: collection, name_vi: "Original")
+                 valid_product_attributes(collection_id: nil, name_vi: "Original")
                )
 
       assert {:ok, product} = Products.update_product(product, %{name_vi: "Updated"})

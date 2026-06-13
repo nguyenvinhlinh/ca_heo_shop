@@ -11,12 +11,23 @@ defmodule CaHeoShop.ProductsFixtures do
 
   def valid_product_attributes(attrs \\ %{}) do
     attrs = Map.new(attrs)
-    collection = Map.get_lazy(attrs, :collection, fn -> collection_fixture() end)
+
+    collection =
+      cond do
+        Map.has_key?(attrs, :collection_id) ->
+          nil
+
+        Map.has_key?(attrs, :collection) ->
+          Map.fetch!(attrs, :collection)
+
+        true ->
+          collection_fixture()
+      end
 
     attrs
     |> Map.delete(:collection)
     |> Enum.into(%{
-      collection_id: collection.id,
+      collection_id: collection && collection.id,
       slug: unique_product_slug(),
       name_vi: "San pham",
       name_en: "Product",

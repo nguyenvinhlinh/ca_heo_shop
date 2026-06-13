@@ -121,6 +121,17 @@ products = %{
       name_en: "Prototype Print Request",
       description_vi: "Dich vu in mau thu tu file STL, ban ve, hoac y tuong ban dau.",
       description_en: "Prototype printing from an STL file, drawing, or early product idea."
+    }),
+  "spare-fastener-pack" =>
+    upsert_product.(%{
+      collection_id: nil,
+      slug: "spare-fastener-pack",
+      name_vi: "Bo oc vit du phong",
+      name_en: "Spare Fastener Pack",
+      description_vi:
+        "Bo oc vit va chi tiet thay the du phong dung cho nhieu san pham khac nhau.",
+      description_en:
+        "A spare pack of fasteners and replacement parts that can be sold on its own."
     })
 }
 

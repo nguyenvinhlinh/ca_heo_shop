@@ -24,6 +24,13 @@ defmodule CaHeoShop.Products do
     |> Repo.all()
   end
 
+  def list_uncategorized_products do
+    Product
+    |> where([p], is_nil(p.collection_id))
+    |> order_by([p], asc: p.name_vi)
+    |> Repo.all()
+  end
+
   def get_product!(id), do: Repo.get!(Product, id)
 
   def get_product_by_slug!(slug) when is_binary(slug) do

@@ -20,7 +20,7 @@ defmodule CaHeoShop.Products.Product do
   def changeset(product, attrs) do
     product
     |> cast(attrs, [:collection_id, :slug, :name_vi, :name_en, :description_vi, :description_en])
-    |> validate_required([:collection_id, :slug, :name_vi, :name_en])
+    |> validate_required([:slug, :name_vi, :name_en])
     |> unique_constraint(:slug)
     |> foreign_key_constraint(:collection_id)
   end
