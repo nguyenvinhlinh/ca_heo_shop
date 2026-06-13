@@ -1,5 +1,4 @@
-[DONE] ✅ [13/06/2026 15:57] 036-admin_product_index_page.md
-
+[TODO] 037_add_bilingual_variant_names_to_product_variants.md
 
 
 
@@ -9,6 +8,7 @@
 
 [backlog] 035_add-role-based-route-authorization.md
 
+[DONE] ✅ [13/06/2026 15:57] 036-admin_product_index_page.md
 
 [DONE] ✅ [13/06/2026 08:15] 032_create-product-variants-table.md
 
