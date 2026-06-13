@@ -448,7 +448,7 @@ defmodule CaHeoShopWeb.CollectionLive do
                     </div>
                   </div>
                   <p class="text-xs text-base-content/60">
-                    PNG, JPG, or JPEG only. Maximum file size: 1MB.
+                    PNG, JPG, or JPEG only. Maximum file size: 2MB. Prefered 1:1 aspect ratio.
                   </p>
                   <div class="flex justify-end">
                     <button class="btn btn-primary btn-sm" type="submit">Upload image</button>
