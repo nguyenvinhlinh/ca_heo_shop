@@ -1,5 +1,9 @@
 [BACKLOG] 📜 030_create-product-table-nullable-collection.md
 
+[BACKLOG] 031_create-product-images-table.md
+
+[BACKLOG] 032_create-product-variants-table.md
+
 [DONE] ✅ [13/06/2026 05:23] 028-03_delete_collection_image.md
 
 [DONE] ✅ 028-04_truncate_collection_image_file_name.md

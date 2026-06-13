@@ -161,10 +161,10 @@ Recommended:
 ```text
 Product schema: CaHeoShop.Products.Product
 Product context: CaHeoShop.Products
-Product image schema: CaHeoShop.ProductImages.ProductImage
-Product image context: CaHeoShop.ProductImages
-Product variant schema: CaHeoShop.ProductVariants.ProductVariant
-Product variant context: CaHeoShop.ProductVariants
+Product image schema: CaHeoShop.Products.ProductImage
+Product image context: CaHeoShop.Products
+Product variant schema: CaHeoShop.Products.ProductVariant
+Product variant context: CaHeoShop.Products
 ```
 
 ## 10. Open Questions
