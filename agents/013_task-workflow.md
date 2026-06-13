@@ -1,3 +1,9 @@
+[BACKLOG] 📜 028-04_use_collection_thumbnail_image.md
+
+[BACKLOG] 📜 028-03_delete_collection_image.md
+
+[BACKLOG] 📜 028-04_use_collection_thumbnail_image.md
+
 [BACKLOG] 📜 030_create-product-table-nullable-collection.md
 
 [DONE] ✅ [13/06/2026 03:45] 028-01_upload-collection-images.md
