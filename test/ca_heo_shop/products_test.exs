@@ -287,7 +287,7 @@ defmodule CaHeoShop.ProductsTest do
   end
 
   describe "admin product detail loading" do
-    test "get_admin_product!/1 preloads collection and ordered product variants" do
+    test "get_admin_product!/1 preloads collection and ordered product variants and images" do
       collection =
         collection_fixture(name_vi: "Bo suu tap A", name_en: "Collection A", nav_display_order: 0)
 
@@ -319,6 +319,27 @@ defmodule CaHeoShop.ProductsTest do
           display_order: 2
         })
 
+      first_image =
+        product_image_fixture(product, %{
+          filename: "first-image.jpg",
+          display_order: 0,
+          has_thumbnail: true
+        })
+
+      second_image =
+        product_image_fixture(product, %{
+          filename: "second-image.jpg",
+          display_order: 0,
+          has_thumbnail: false
+        })
+
+      later_image =
+        product_image_fixture(product, %{
+          filename: "later-image.jpg",
+          display_order: 2,
+          has_thumbnail: true
+        })
+
       _other_product_variant =
         product_variant_fixture(product_fixture(collection_id: nil), %{
           variant_name_vi: "Bien the khac",
@@ -326,16 +347,30 @@ defmodule CaHeoShop.ProductsTest do
           display_order: 0
         })
 
+      _other_product_image =
+        product_image_fixture(product_fixture(collection_id: nil), %{
+          filename: "other-image.jpg",
+          display_order: 0,
+          has_thumbnail: true
+        })
+
       loaded_product = Products.get_admin_product!(product.id)
 
       assert Ecto.assoc_loaded?(loaded_product.collection)
       assert Ecto.assoc_loaded?(loaded_product.product_variants)
+      assert Ecto.assoc_loaded?(loaded_product.product_images)
       assert loaded_product.collection.id == collection.id
 
       assert Enum.map(loaded_product.product_variants, & &1.id) == [
                first_variant.id,
                second_variant.id,
                later_variant.id
+             ]
+
+      assert Enum.map(loaded_product.product_images, & &1.id) == [
+               first_image.id,
+               second_image.id,
+               later_image.id
              ]
     end
   end

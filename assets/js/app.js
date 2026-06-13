@@ -26,10 +26,34 @@ import {hooks as colocatedHooks} from "phoenix-colocated/ca_heo_shop"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+const hooks = {
+  CopyToClipboard: {
+    mounted() {
+      this.onClick = async () => {
+        const text = this.el.dataset.copyText
+
+        if (!text || !navigator.clipboard?.writeText) return
+
+        try {
+          await navigator.clipboard.writeText(text)
+        } catch (_error) {
+          // Ignore clipboard errors for this UI-only helper.
+        }
+      }
+
+      this.el.addEventListener("click", this.onClick)
+    },
+
+    destroyed() {
+      this.el.removeEventListener("click", this.onClick)
+    },
+  },
+}
+
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...hooks, ...colocatedHooks},
 })
 
 // Show progress bar on live navigation and form submits
@@ -80,4 +104,3 @@ if (process.env.NODE_ENV === "development") {
     window.liveReloader = reloader
   })
 }
-

@@ -102,7 +102,8 @@ defmodule CaHeoShop.Products do
     |> Repo.get!(id)
     |> Repo.preload([
       :collection,
-      product_variants: product_variants_order_query()
+      product_variants: product_variants_order_query(),
+      product_images: product_images_order_query()
     ])
   end
 

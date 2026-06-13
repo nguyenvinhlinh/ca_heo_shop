@@ -1,6 +1,4 @@
-[DONE] ✅ [13/06/2026 15:11] 039-02_admin_product_variants_readonly_table.md
-
-[backlog] 039-03_admin_product_image_preview_and_thumbnail_list.md
+[DONE] ✅ [13/06/2026 15:25] 039-03_admin_product_image_preview_and_thumbnail_list.md
 
 [backlog] 039-04_admin_product_image_preview_selection.md
 
@@ -17,6 +15,8 @@
 [backlog] 034_allow-login-w-username-and-email.md
 
 [backlog] 035_add-role-based-route-authorization.md
+
+[DONE] ✅ [13/06/2026 15:11] 039-02_admin_product_variants_readonly_table.md
 
 [DONE] ✅ [13/06/2026 11:58] 039-01_admin_product_detail_shell.md
 

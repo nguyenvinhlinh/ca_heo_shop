@@ -149,11 +149,32 @@ defmodule CaHeoShopWeb.AdminLiveTest do
         image_filename: "later-variant.jpg"
       })
 
+    _selected_image =
+      product_image_fixture(product, %{
+        filename: "/images/storefront/magnetic-cable-clip.jpg",
+        display_order: 0,
+        has_thumbnail: true
+      })
+
+    _no_thumbnail_image =
+      product_image_fixture(product, %{
+        filename: "/images/storefront/magnetic-cable-clip-detail.jpg",
+        display_order: 1,
+        has_thumbnail: false
+      })
+
     _other_product_variant =
       product_variant_fixture(product_fixture(collection_id: nil), %{
         variant_name_vi: "Bien the khac",
         variant_name_en: "Other variant",
         display_order: 0
+      })
+
+    _other_product_image =
+      product_image_fixture(product_fixture(collection_id: nil), %{
+        filename: "/images/storefront/other-product.jpg",
+        display_order: 0,
+        has_thumbnail: true
       })
 
     {:ok, _view, html} = live(conn, ~p"/admin/products/#{product.id}")
@@ -167,6 +188,21 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Linh kien ban"
     assert html =~ "Keeps desk cables organized."
     assert html =~ "Giu day gon gang tren ban lam viec."
+    assert html =~ "Image preview"
+    assert html =~ "Product images"
+    assert html =~ "Copy"
+    assert html =~ "Delete"
+    assert html =~ "View original"
+    assert html =~ "/images/storefront/magnetic-cable-clip_500x500px.jpg"
+    assert html =~ "/images/storefront/magnetic-cable-clip.jpg"
+    assert html =~ "/images/storefront/magnetic-cable-clip-detail.jpg"
+    assert html =~ "Order: 0"
+    assert html =~ "Order: 1"
+    assert html =~ "Thumbnail: yes"
+    assert html =~ "Thumbnail: no"
+    assert html =~ ~s(data-copy-text="/images/storefront/magnetic-cable-clip.jpg")
+    refute html =~ "/images/storefront/magnetic-cable-clip-detail_500x500px.jpg"
+    refute html =~ "/images/storefront/other-product.jpg"
     assert html =~ "Product variants"
     assert html =~ "New variant"
     assert html =~ "First variant"
@@ -195,6 +231,11 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     {content_pos, _} = :binary.match(html, "Product content")
     {variants_pos, _} = :binary.match(html, "Product variants")
     assert content_pos < variants_pos
+    {preview_pos, _} = :binary.match(html, "Image preview")
+    {images_pos, _} = :binary.match(html, "Product images")
+    assert variants_pos < preview_pos
+    assert variants_pos < images_pos
+    assert preview_pos < images_pos
     refute html =~ "Create product"
     refute html =~ "No variants"
 
@@ -218,9 +259,17 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/admin/products/#{product.id}")
 
+    assert html =~ "Image preview"
+    assert html =~ "No image"
+    assert html =~ "Product images"
+    assert html =~ "No product images"
     assert html =~ "Product variants"
     assert html =~ "New variant"
     assert html =~ "No variants"
+    assert html =~ ~s(class="btn btn-xs" disabled)
+    assert html =~ ">Copy</button>"
+    assert html =~ ~s(class="btn btn-ghost btn-sm" disabled)
+    assert html =~ ">View original</button>"
     refute html =~ "Edit"
     refute html =~ "Remove"
   end

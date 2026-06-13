@@ -375,108 +375,240 @@ defmodule CaHeoShopWeb.ProductLive do
       </:actions>
     </AdminLive.page_header>
 
-    <section class="mt-6 space-y-6">
-      <div class="card bg-base-100 shadow-sm">
-        <div class="card-body gap-5">
-          <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div class="space-y-2">
-              <p class="text-sm font-medium uppercase tracking-[0.2em] text-base-content/50">
-                Product summary
+    <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+      <div class="space-y-6">
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body gap-5">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div class="space-y-2">
+                <p class="text-sm font-medium uppercase tracking-[0.2em] text-base-content/50">
+                  Product summary
+                </p>
+                <div>
+                  <h2 class="text-2xl font-semibold">{primary_product_name(@product)}</h2>
+                  <p class="mt-1 text-sm text-base-content/70">{secondary_product_name(@product)}</p>
+                </div>
+              </div>
+              <div class="badge badge-soft badge-primary">ID #{@product.id}</div>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+              <.detail_item label="Collection" value={product_collection_label(@product.collection)} />
+              <.detail_item label="Slug" value={"/#{@product.slug}"} />
+              <.detail_item label="English name" value={display_text(@product.name_en)} />
+              <.detail_item label="Vietnamese name" value={display_text(@product.name_vi)} />
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body gap-5">
+            <div>
+              <h2 class="card-title text-base">Product content</h2>
+              <p class="text-sm text-base-content/60">
+                Base product descriptions only. Variants and image management will be added later.
               </p>
+            </div>
+
+            <div class="grid gap-4 2xl:grid-cols-2">
+              <.detail_block
+                title="English description"
+                value={long_text_or_placeholder(@product.description_en)}
+              />
+              <.detail_block
+                title="Vietnamese description"
+                value={long_text_or_placeholder(@product.description_vi)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body gap-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 class="text-2xl font-semibold">{primary_product_name(@product)}</h2>
-                <p class="mt-1 text-sm text-base-content/70">{secondary_product_name(@product)}</p>
+                <h2 class="card-title text-base">Product variants</h2>
+                <p class="text-sm text-base-content/60">
+                  Read-only variants for the current product, ordered for admin review.
+                </p>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" disabled>New variant</button>
+            </div>
+
+            <div class="overflow-auto">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th class="w-20">Order</th>
+                    <th>Variant VI</th>
+                    <th>Variant EN</th>
+                    <th>Cost</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Image filename</th>
+
+                    <th class="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr :if={@product.product_variants == []}>
+                    <td colspan="9" class="py-12 text-center text-base-content/60">No variants</td>
+                  </tr>
+                  <tr :for={variant <- @product.product_variants} class="hover:bg-base-200/40">
+                    <td class="align-top">{variant.display_order}</td>
+                    <td class="align-top font-medium">
+                    {variant.variant_name_vi}</td>
+                    <td class="align-top text-base-content/70">{variant.variant_name_en}</td>
+                    <td class="align-top">{format_vnd(variant.production_cost)}</td>
+                    <td class="align-top">{format_vnd(variant.selling_price)}</td>
+                    <td class="align-top">{variant.stock_quantity}</td>
+                    <td class="align-top">{display_image_filename(variant.image_filename)}</td>
+
+                    <td class="align-top text-right">
+                      <div class="join">
+                        <button type="button" class="btn btn-xs join-item" disabled>
+                          Edit
+                        </button>
+                        <button type="button" class="btn btn-error btn-xs join-item" disabled>
+                          Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        <.product_image_preview_panel selected_image={selected_product_image(@product)} />
+        <.product_images_panel product_images={@product.product_images} />
+      </div>
+    </section>
+    """
+  end
+
+  attr :selected_image, :map, default: nil
+
+  def product_image_preview_panel(assigns) do
+    ~H"""
+    <section class="card bg-base-100 shadow-sm">
+      <div class="card-body gap-5">
+        <div>
+          <h2 class="card-title text-base">Image preview</h2>
+          <p class="text-sm text-base-content/60">
+            Thumbnail-only preview for the first ordered product image.
+          </p>
+        </div>
+
+        <div class="overflow-hidden rounded-box border border-base-300 bg-base-200/60">
+          <%= cond do %>
+            <% preview_path = product_image_thumbnail_path(@selected_image) -> %>
+              <img
+                src={preview_path}
+                alt={@selected_image.filename}
+                class="aspect-square w-full object-cover"
+              />
+            <% @selected_image -> %>
+              <div class="flex aspect-square items-center justify-center p-6 text-center text-sm text-base-content/60">
+                Thumbnail pending
+              </div>
+            <% true -> %>
+              <div class="flex aspect-square items-center justify-center p-6 text-center text-sm text-base-content/60">
+                No image
+              </div>
+          <% end %>
+        </div>
+
+        <div class="flex min-w-0 items-center gap-2">
+          <div class="min-w-0 grow rounded-box bg-base-200/60 px-3 py-2 text-sm text-base-content/80">
+            <p class="truncate">{selected_image_filename(@selected_image)}</p>
+          </div>
+
+          <%= if @selected_image do %>
+            <button
+              id={"copy-product-image-filename-#{@selected_image.id}"}
+              type="button"
+              class="btn btn-xs"
+              phx-hook="CopyToClipboard"
+              data-copy-text={@selected_image.filename}
+            >
+              Copy
+            </button>
+          <% else %>
+            <button type="button" class="btn btn-xs" disabled>Copy</button>
+          <% end %>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn btn-error btn-sm" disabled>Delete</button>
+
+          <%= if original_path = product_image_original_path(@selected_image) do %>
+            <a
+              href={original_path}
+              class="btn btn-ghost btn-sm"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View original
+            </a>
+          <% else %>
+            <button type="button" class="btn btn-ghost btn-sm" disabled>View original</button>
+          <% end %>
+        </div>
+      </div>
+    </section>
+    """
+  end
+
+  attr :product_images, :list, required: true
+
+  def product_images_panel(assigns) do
+    ~H"""
+    <section class="card bg-base-100 shadow-sm">
+      <div class="card-body gap-5">
+        <div>
+          <h2 class="card-title text-base">Product images</h2>
+          <p class="text-sm text-base-content/60">
+            Read-only thumbnail list ordered by display order.
+          </p>
+        </div>
+
+        <div
+          :if={@product_images == []}
+          class="rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/60"
+        >
+          No product images
+        </div>
+
+        <div :if={@product_images != []} class="space-y-3">
+          <div
+            :for={product_image <- @product_images}
+            class="flex items-center gap-3 rounded-box border border-base-300 p-3"
+          >
+            <div class="h-14 w-14 shrink-0 overflow-hidden rounded-box bg-base-200/60">
+              <%= if thumbnail_path = product_image_thumbnail_path(product_image) do %>
+                <img
+                  src={thumbnail_path}
+                  alt={product_image.filename}
+                  class="h-full w-full object-cover"
+                />
+              <% else %>
+                <div class="flex h-full w-full items-center justify-center text-[11px] text-base-content/60">
+                  No thumb
+                </div>
+              <% end %>
+            </div>
+
+            <div class="min-w-0 grow">
+              <p class="truncate text-sm font-medium">{product_image.filename}</p>
+              <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-base-content/60">
+                <span>Order: {product_image.display_order}</span>
+                <span>Thumbnail: {thumbnail_status_label(product_image)}</span>
               </div>
             </div>
-            <div class="badge badge-soft badge-primary">ID #{@product.id}</div>
-          </div>
-
-          <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-            <.detail_item label="Collection" value={product_collection_label(@product.collection)} />
-            <.detail_item label="Slug" value={"/#{@product.slug}"} />
-            <.detail_item label="English name" value={display_text(@product.name_en)} />
-            <.detail_item label="Vietnamese name" value={display_text(@product.name_vi)} />
-          </div>
-        </div>
-      </div>
-
-      <div class="card bg-base-100 shadow-sm">
-        <div class="card-body gap-5">
-          <div>
-            <h2 class="card-title text-base">Product content</h2>
-            <p class="text-sm text-base-content/60">
-              Base product descriptions only. Variants and image management will be added later.
-            </p>
-          </div>
-
-          <div class="grid gap-4 2xl:grid-cols-2">
-            <.detail_block
-              title="English description"
-              value={long_text_or_placeholder(@product.description_en)}
-            />
-            <.detail_block
-              title="Vietnamese description"
-              value={long_text_or_placeholder(@product.description_vi)}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div class="card bg-base-100 shadow-sm">
-        <div class="card-body gap-5">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 class="card-title text-base">Product variants</h2>
-              <p class="text-sm text-base-content/60">
-                Read-only variants for the current product, ordered for admin review.
-              </p>
-            </div>
-            <button type="button" class="btn btn-primary btn-sm" disabled>New variant</button>
-          </div>
-
-          <div class="overflow-auto">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th class="w-20">Order</th>
-                  <th>Variant VI</th>
-                  <th>Variant EN</th>
-                  <th>Cost</th>
-                  <th>Price</th>
-                  <th>Stock</th>
-                  <th>Image filename</th>
-                  <th>Updated</th>
-                  <th class="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :if={@product.product_variants == []}>
-                  <td colspan="9" class="py-12 text-center text-base-content/60">No variants</td>
-                </tr>
-                <tr :for={variant <- @product.product_variants} class="hover:bg-base-200/40">
-                  <td class="align-top">{variant.display_order}</td>
-                  <td class="align-top font-medium">{variant.variant_name_vi}</td>
-                  <td class="align-top text-base-content/70">{variant.variant_name_en}</td>
-                  <td class="align-top">{format_vnd(variant.production_cost)}</td>
-                  <td class="align-top">{format_vnd(variant.selling_price)}</td>
-                  <td class="align-top">{variant.stock_quantity}</td>
-                  <td class="align-top">{display_image_filename(variant.image_filename)}</td>
-                  <td class="align-top">
-                    {format_datetime(variant.updated_at || variant.inserted_at)}
-                  </td>
-                  <td class="align-top text-right">
-                    <div class="join">
-                      <button type="button" class="btn btn-xs join-item" disabled>
-                        Edit
-                      </button>
-                      <button type="button" class="btn btn-error btn-xs join-item" disabled>
-                        Remove
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         </div>
       </div>
@@ -595,6 +727,27 @@ defmodule CaHeoShopWeb.ProductLive do
         filename
     end
   end
+
+  defp selected_product_image(product) do
+    Enum.find(product.product_images, &(&1.display_order == 0)) ||
+      List.first(product.product_images)
+  end
+
+  defp product_image_thumbnail_path(%{filename: filename, has_thumbnail: true})
+       when is_binary(filename) do
+    Uploads.thumbnail_filename(filename)
+  end
+
+  defp product_image_thumbnail_path(_product_image), do: nil
+
+  defp product_image_original_path(%{filename: filename}) when is_binary(filename), do: filename
+  defp product_image_original_path(_product_image), do: nil
+
+  defp selected_image_filename(%{filename: filename}) when is_binary(filename), do: filename
+  defp selected_image_filename(_product_image), do: "—"
+
+  defp thumbnail_status_label(%{has_thumbnail: true}), do: "yes"
+  defp thumbnail_status_label(_product_image), do: "no"
 
   defp product_collection_label(nil), do: "No collection"
 
