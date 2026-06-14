@@ -3,9 +3,11 @@ defmodule CaHeoShop.GenServer.ThumbnailGeneratorTest do
 
   alias CaHeoShop.Collections
   alias CaHeoShop.GenServer.ThumbnailGenerator
+  alias CaHeoShop.Products
   alias CaHeoShop.Uploads
 
   import CaHeoShop.CollectionsFixtures
+  import CaHeoShop.ProductsFixtures
 
   setup :set_collection_assets_path
   setup :set_ffmpeg_runner
@@ -59,6 +61,100 @@ defmodule CaHeoShop.GenServer.ThumbnailGeneratorTest do
 
       assert updated_collection.image_filename == nil
       assert updated_collection.has_thumbnail == nil
+      refute File.exists?(original_path)
+    end
+  end
+
+  describe "process_pending_product_images/0" do
+    test "generates a 500x500 thumbnail and marks the product image ready" do
+      product = product_fixture()
+      upload_path = write_temp_upload!("product-image.png", "png-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "product-image.png"
+               })
+
+      Application.put_env(:ca_heo_shop, :ffmpeg_runner, __MODULE__.FFmpegRunnerSuccess)
+
+      ThumbnailGenerator.process_pending_product_images()
+
+      updated_product_image = Products.get_product_image!(product_image.id)
+
+      assert updated_product_image.has_thumbnail == true
+      assert updated_product_image.filename == product_image.filename
+
+      assert {:ok, thumbnail_path} =
+               Uploads.product_image_path(Uploads.thumbnail_filename(product_image.filename))
+
+      assert File.exists?(thumbnail_path)
+    end
+
+    test "marks product image ready when the thumbnail file already exists" do
+      product = product_fixture()
+      upload_path = write_temp_upload!("product-image.jpg", "jpg-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "product-image.jpg"
+               })
+
+      assert {:ok, thumbnail_path} =
+               Uploads.product_image_path(Uploads.thumbnail_filename(product_image.filename))
+
+      File.write!(thumbnail_path, "thumb-data")
+
+      Application.put_env(:ca_heo_shop, :ffmpeg_runner, __MODULE__.FFmpegRunnerFailure)
+
+      ThumbnailGenerator.process_pending_product_images()
+
+      updated_product_image = Products.get_product_image!(product_image.id)
+      assert updated_product_image.has_thumbnail == true
+      assert File.exists?(thumbnail_path)
+    end
+
+    test "deletes the product image when the original file is missing" do
+      product = product_fixture()
+      upload_path = write_temp_upload!("missing-product-image.jpg", "jpg-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "missing-product-image.jpg"
+               })
+
+      assert {:ok, original_path} = Uploads.product_image_path(product_image.filename)
+      File.rm!(original_path)
+
+      ThumbnailGenerator.process_pending_product_images()
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Products.get_product_image!(product_image.id)
+      end
+    end
+
+    test "deletes the invalid product image when ffmpeg thumbnail generation fails" do
+      product = product_fixture()
+      upload_path = write_temp_upload!("invalid-product-image.jpg", "jpg-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "invalid-product-image.jpg"
+               })
+
+      assert {:ok, original_path} = Uploads.product_image_path(product_image.filename)
+
+      Application.put_env(:ca_heo_shop, :ffmpeg_runner, __MODULE__.FFmpegRunnerFailure)
+
+      ThumbnailGenerator.process_pending_product_images()
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Products.get_product_image!(product_image.id)
+      end
+
       refute File.exists?(original_path)
     end
   end

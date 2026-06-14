@@ -78,10 +78,11 @@ defmodule CaHeoShop.Products do
     |> Repo.all()
   end
 
-  def list_product_images_without_thumbnail do
+  def list_product_images_without_thumbnail(limit \\ 20) do
     ProductImage
     |> where([image], image.has_thumbnail == false)
-    |> order_by([image], asc: image.id)
+    |> order_by([image], asc: image.inserted_at, asc: image.id)
+    |> limit(^limit)
     |> Repo.all()
   end
 
@@ -321,8 +322,12 @@ defmodule CaHeoShop.Products do
   def reorder_product_variants(_product_id, _ordered_variant_ids),
     do: {:error, :invalid_product_variant_order}
 
-  def mark_product_image_thumbnail_created(%ProductImage{} = product_image) do
+  def mark_product_image_thumbnail_generated(%ProductImage{} = product_image) do
     update_product_image(product_image, %{has_thumbnail: true})
+  end
+
+  def mark_product_image_thumbnail_created(%ProductImage{} = product_image) do
+    mark_product_image_thumbnail_generated(product_image)
   end
 
   def mark_product_image_thumbnail_missing(%ProductImage{} = product_image) do

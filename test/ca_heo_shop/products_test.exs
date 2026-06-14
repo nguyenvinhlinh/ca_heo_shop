@@ -661,12 +661,14 @@ defmodule CaHeoShop.ProductsTest do
       assert Products.list_product_images(product) == [first, second]
     end
 
-    test "list_product_images_without_thumbnail/0 returns only images without thumbnails" do
+    test "list_product_images_without_thumbnail/1 returns only pending images oldest first with a limit" do
       product = product_fixture()
-      missing = product_image_fixture(product, %{filename: "missing.jpg", has_thumbnail: false})
+      oldest = product_image_fixture(product, %{filename: "oldest.jpg", has_thumbnail: false})
+      second = product_image_fixture(product, %{filename: "second.jpg", has_thumbnail: false})
       _created = product_image_fixture(product, %{filename: "created.jpg", has_thumbnail: true})
 
-      assert Products.list_product_images_without_thumbnail() == [missing]
+      assert Products.list_product_images_without_thumbnail(1) == [oldest]
+      assert Products.list_product_images_without_thumbnail() == [oldest, second]
     end
 
     test "create_product_image_for_product/2 injects the product id" do
@@ -754,12 +756,12 @@ defmodule CaHeoShop.ProductsTest do
       assert updated_product_image.has_thumbnail == true
     end
 
-    test "mark_product_image_thumbnail_created/1 sets has_thumbnail to true" do
+    test "mark_product_image_thumbnail_generated/1 sets has_thumbnail to true" do
       product = product_fixture()
       product_image = product_image_fixture(product, %{has_thumbnail: false})
 
       assert {:ok, updated_product_image} =
-               Products.mark_product_image_thumbnail_created(product_image)
+               Products.mark_product_image_thumbnail_generated(product_image)
 
       assert updated_product_image.has_thumbnail == true
     end

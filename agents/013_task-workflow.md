@@ -12,6 +12,8 @@
 
 [DONE] ✅ [14/06/2026 16:25] 039-12_admin_upload_product_image.md
 
+[DONE] ✅ [14/06/2026 16:51] 039-13_apply_thumbnail_generator_to_product_images.md
+
 [BACKLOG] 📜 040_extract_product_live_tests_from_admin_live_test.md
 
 [Backlog] 033_update-users-with-role-fullname.md
