@@ -10,6 +10,10 @@
 
 [DONE] ✅ [14/06/2026 10:17] 039-11_admin_edit_product_content_dialog.md
 
+[DONE] ✅ [14/06/2026 16:25] 039-12_admin_upload_product_image.md
+
+[BACKLOG] 📜 040_extract_product_live_tests_from_admin_live_test.md
+
 [Backlog] 033_update-users-with-role-fullname.md
 
 [backlog] 034_allow-login-w-username-and-email.md

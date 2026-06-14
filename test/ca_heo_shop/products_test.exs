@@ -5,9 +5,12 @@ defmodule CaHeoShop.ProductsTest do
   alias CaHeoShop.Products.Product
   alias CaHeoShop.Products.ProductImage
   alias CaHeoShop.Products.ProductVariant
+  alias CaHeoShop.Uploads
 
   import CaHeoShop.CollectionsFixtures
   import CaHeoShop.ProductsFixtures
+
+  setup :set_product_assets_path
 
   describe "products" do
     test "create_product/1 validates slug format and length" do
@@ -679,6 +682,62 @@ defmodule CaHeoShop.ProductsTest do
       assert product_image.has_thumbnail == false
     end
 
+    test "add_product_image_upload/2 stores a managed upload and appends display_order" do
+      product = product_fixture()
+      _existing = product_image_fixture(product, %{filename: "existing.jpg", display_order: 0})
+      upload_path = write_temp_upload!("product-image.jpeg", "jpeg-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "product-image.jpeg"
+               })
+
+      assert product_image.product_id == product.id
+      assert product_image.display_order == 1
+      assert product_image.has_thumbnail == false
+      assert product_image.filename =~ ~r/^#{product.id}_.+\.jpg$/
+      assert {:ok, stored_path} = Uploads.product_image_path(product_image.filename)
+      assert File.exists?(stored_path)
+    end
+
+    test "add_product_image_uploads/2 stores multiple managed uploads in order" do
+      product = product_fixture()
+      existing = product_image_fixture(product, %{filename: "existing.jpg", display_order: 0})
+      first_upload_path = write_temp_upload!("first-product-image.jpg", "jpg-data-1")
+      second_upload_path = write_temp_upload!("second-product-image.png", "png-data-2")
+
+      assert {:ok, [first_product_image, second_product_image]} =
+               Products.add_product_image_uploads(product, [
+                 %{path: first_upload_path, client_name: "first-product-image.jpg"},
+                 %{path: second_upload_path, client_name: "second-product-image.png"}
+               ])
+
+      assert first_product_image.display_order == 1
+      assert second_product_image.display_order == 2
+      assert first_product_image.filename =~ ~r/^#{product.id}_.+\.jpg$/
+      assert second_product_image.filename =~ ~r/^#{product.id}_.+\.png$/
+
+      assert Enum.map(Products.list_product_images(product), &{&1.id, &1.display_order}) == [
+               {existing.id, 0},
+               {first_product_image.id, 1},
+               {second_product_image.id, 2}
+             ]
+    end
+
+    test "add_product_image_upload/2 returns upload errors without creating a record" do
+      product = product_fixture()
+      upload_path = write_temp_upload!("product-image.gif", "gif-data")
+
+      assert {:error, "unsupported file type"} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "product-image.gif"
+               })
+
+      assert Products.list_product_images(product) == []
+    end
+
     test "update_product_image/2 updates filename, display_order, and has_thumbnail" do
       product = product_fixture()
       product_image = product_image_fixture(product)
@@ -726,6 +785,30 @@ defmodule CaHeoShop.ProductsTest do
       end
     end
 
+    test "delete_product_image/1 removes managed upload files" do
+      product = product_fixture()
+      upload_path = write_temp_upload!("delete-product-image.jpg", "jpg-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "delete-product-image.jpg"
+               })
+
+      assert {:ok, stored_path} = Uploads.product_image_path(product_image.filename)
+      thumbnail_filename = Uploads.thumbnail_filename(product_image.filename)
+      assert {:ok, thumbnail_path} = Uploads.product_image_path(thumbnail_filename)
+      File.write!(thumbnail_path, "thumb-data")
+
+      assert File.exists?(stored_path)
+      assert File.exists?(thumbnail_path)
+
+      assert {:ok, %ProductImage{}} = Products.delete_product_image(product_image)
+
+      refute File.exists?(stored_path)
+      refute File.exists?(thumbnail_path)
+    end
+
     test "deleting a product deletes its product images" do
       product = product_fixture()
       product_image = product_image_fixture(product)
@@ -735,6 +818,24 @@ defmodule CaHeoShop.ProductsTest do
       assert_raise Ecto.NoResultsError, fn ->
         Products.get_product_image!(product_image.id)
       end
+    end
+
+    test "deleting a product removes managed product image files" do
+      product = product_fixture()
+      upload_path = write_temp_upload!("delete-product.jpg", "jpg-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "delete-product.jpg"
+               })
+
+      assert {:ok, stored_path} = Uploads.product_image_path(product_image.filename)
+      assert File.exists?(stored_path)
+
+      assert {:ok, %Product{}} = Products.delete_product(product)
+
+      refute File.exists?(stored_path)
     end
   end
 
@@ -1128,5 +1229,36 @@ defmodule CaHeoShop.ProductsTest do
         Products.get_product_variant!(product_variant.id)
       end
     end
+  end
+
+  defp set_product_assets_path(_context) do
+    previous = System.get_env("CA_HEO_SHOP_ASSETS_PATH")
+
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "ca_heo_shop_product_assets_#{System.unique_integer([:positive])}"
+      )
+
+    File.mkdir_p!(path)
+    System.put_env("CA_HEO_SHOP_ASSETS_PATH", path)
+
+    on_exit(fn ->
+      if previous do
+        System.put_env("CA_HEO_SHOP_ASSETS_PATH", previous)
+      else
+        System.delete_env("CA_HEO_SHOP_ASSETS_PATH")
+      end
+
+      File.rm_rf(path)
+    end)
+
+    :ok
+  end
+
+  defp write_temp_upload!(filename, contents) do
+    path = Path.join(System.tmp_dir!(), "#{System.unique_integer([:positive])}-#{filename}")
+    File.write!(path, contents)
+    path
   end
 end

@@ -1,9 +1,10 @@
 defmodule CaHeoShop.Uploads do
   @moduledoc """
-  Server-side upload helpers for collection assets.
+  Server-side upload helpers for managed collection and product image assets.
   """
 
   @collection_images_dir "collection_images"
+  @product_images_dir "product_images"
   @thumb_suffix "_500x500px"
   @allowed_extensions [".png", ".jpg", ".jpeg"]
 
@@ -20,20 +21,90 @@ defmodule CaHeoShop.Uploads do
   end
 
   def collection_images_dir do
+    managed_images_dir(@collection_images_dir)
+  end
+
+  def product_images_dir do
+    managed_images_dir(@product_images_dir)
+  end
+
+  def store_product_image(product_id, %{path: path, client_name: client_name}) do
+    with {:ok, extension} <- normalize_extension(client_name),
+         {:ok, product_images_dir} <- product_images_dir(),
+         filename <- "#{product_id}_#{Ecto.UUID.generate()}#{extension}",
+         destination <- Path.join(product_images_dir, filename),
+         :ok <- File.cp(path, destination) do
+      {:ok, filename}
+    else
+      {:error, _reason} = error -> error
+    end
+  end
+
+  def product_image_path(filename) when is_binary(filename) do
+    with {:ok, product_images_dir} <- product_images_dir(),
+         true <- safe_filename?(filename) do
+      {:ok, Path.join(product_images_dir, filename)}
+    else
+      false -> {:error, :invalid_filename}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  def delete_product_image_assets(nil), do: :ok
+
+  def delete_product_image_assets(image_filename) when is_binary(image_filename) do
+    if static_asset_path?(image_filename) do
+      :ok
+    else
+      with {:ok, original_path} <- product_image_path(image_filename),
+           {:ok, thumbnail_path} <- product_image_path(thumbnail_filename(image_filename)) do
+        :ok = delete_if_exists(original_path)
+        :ok = delete_if_exists(thumbnail_path)
+        :ok
+      else
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  def public_product_image_path(nil), do: nil
+
+  def public_product_image_path(image_filename) when is_binary(image_filename) do
+    if static_asset_path?(image_filename) do
+      image_filename
+    else
+      "/product_images/#{image_filename}"
+    end
+  end
+
+  def product_display_image_path(%{filename: nil}), do: nil
+
+  def product_display_image_path(%{filename: image_filename, has_thumbnail: true})
+      when is_binary(image_filename) do
+    image_filename
+    |> thumbnail_filename()
+    |> public_product_image_path()
+  end
+
+  def product_display_image_path(%{filename: image_filename}) when is_binary(image_filename) do
+    public_product_image_path(image_filename)
+  end
+
+  defp managed_images_dir(dir_name) do
     case assets_root_path() do
       nil ->
         {:error, "CA_HEO_SHOP_ASSETS_PATH is missing"}
 
       root_path ->
         if File.dir?(root_path) do
-          collection_images_dir = Path.join(root_path, @collection_images_dir)
+          images_dir = Path.join(root_path, dir_name)
 
-          case File.mkdir_p(collection_images_dir) do
+          case File.mkdir_p(images_dir) do
             :ok ->
-              {:ok, collection_images_dir}
+              {:ok, images_dir}
 
             {:error, reason} ->
-              {:error, "collection_images directory is not writable: #{inspect(reason)}"}
+              {:error, "#{dir_name} directory is not writable: #{inspect(reason)}"}
           end
         else
           {:error, "CA_HEO_SHOP_ASSETS_PATH is invalid"}

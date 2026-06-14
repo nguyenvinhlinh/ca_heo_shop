@@ -4,12 +4,14 @@ defmodule CaHeoShop.Products do
   """
 
   import Ecto.Query, warn: false
+  require Logger
   alias CaHeoShop.Repo
 
   alias CaHeoShop.Collections.Collection
   alias CaHeoShop.Products.Product
   alias CaHeoShop.Products.ProductImage
   alias CaHeoShop.Products.ProductVariant
+  alias CaHeoShop.Uploads
   alias Ecto.Multi
 
   @admin_default_page 1
@@ -109,6 +111,21 @@ defmodule CaHeoShop.Products do
     end
   end
 
+  def next_product_image_display_order(%Product{id: product_id}) do
+    next_product_image_display_order(product_id)
+  end
+
+  def next_product_image_display_order(product_id) do
+    ProductImage
+    |> where([image], image.product_id == ^product_id)
+    |> select([image], max(image.display_order))
+    |> Repo.one()
+    |> case do
+      nil -> 0
+      display_order -> display_order + 1
+    end
+  end
+
   def get_product!(id), do: Repo.get!(Product, id)
   def get_product_image!(id), do: Repo.get!(ProductImage, id)
   def get_product_variant!(id), do: Repo.get!(ProductVariant, id)
@@ -152,6 +169,54 @@ defmodule CaHeoShop.Products do
       |> Map.put(:product_id, product_id)
 
     create_product_image(attrs)
+  end
+
+  def add_product_image_upload(%Product{} = product, upload_meta) do
+    case add_product_image_uploads(product, [upload_meta]) do
+      {:ok, [product_image]} ->
+        {:ok, product_image}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def add_product_image_uploads(%Product{} = product, upload_metas) when is_list(upload_metas) do
+    with {:ok, stored_uploads} <- store_product_image_uploads(product.id, upload_metas) do
+      create_product_images_for_product(
+        product,
+        Enum.map(stored_uploads, fn %{filename: filename} -> filename end)
+      )
+    end
+  end
+
+  def create_product_images_for_product(%Product{} = product, filenames)
+      when is_list(filenames) do
+    starting_display_order = next_product_image_display_order(product.id)
+
+    filenames
+    |> Enum.with_index(starting_display_order)
+    |> Enum.reduce(Multi.new(), fn {filename, display_order}, multi ->
+      Multi.insert(
+        multi,
+        {:product_image, display_order},
+        ProductImage.changeset(%ProductImage{}, %{
+          product_id: product.id,
+          filename: filename,
+          display_order: display_order,
+          has_thumbnail: false
+        })
+      )
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, changes} ->
+        {:ok, extract_inserted_product_images(changes)}
+
+      {:error, _operation, %Ecto.Changeset{} = changeset, _changes} ->
+        Enum.each(filenames, &maybe_delete_product_image_assets/1)
+        {:error, changeset}
+    end
   end
 
   def update_product(%Product{} = product, attrs) do
@@ -265,11 +330,29 @@ defmodule CaHeoShop.Products do
   end
 
   def delete_product(%Product{} = product) do
-    Repo.delete(product)
+    image_filenames = product_image_filenames(product.id)
+
+    case Repo.delete(product) do
+      {:ok, deleted_product} ->
+        Enum.each(image_filenames, &maybe_delete_product_image_assets/1)
+        {:ok, deleted_product}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:error, changeset}
+    end
   end
 
   def delete_product_image(%ProductImage{} = product_image) do
-    Repo.delete(product_image)
+    image_filename = product_image.filename
+
+    case Repo.delete(product_image) do
+      {:ok, deleted_product_image} ->
+        maybe_delete_product_image_assets(image_filename)
+        {:ok, deleted_product_image}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:error, changeset}
+    end
   end
 
   def delete_product_variant(%ProductVariant{} = product_variant) do
@@ -479,5 +562,63 @@ defmodule CaHeoShop.Products do
       collection: params.collection,
       q: params.q
     }
+  end
+
+  defp product_image_filenames(product_id) do
+    ProductImage
+    |> where([image], image.product_id == ^product_id)
+    |> select([image], image.filename)
+    |> Repo.all()
+  end
+
+  defp maybe_delete_product_image_assets(nil), do: :ok
+
+  defp maybe_delete_product_image_assets(image_filename) do
+    case Uploads.delete_product_image_assets(image_filename) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning(
+          "failed to delete product image assets for #{image_filename}: #{inspect(reason)}"
+        )
+
+        :ok
+    end
+  end
+
+  defp store_product_image_uploads(_product_id, []), do: {:ok, []}
+
+  defp store_product_image_uploads(product_id, upload_metas) do
+    Enum.reduce_while(upload_metas, {:ok, []}, fn upload_meta, {:ok, stored_uploads} ->
+      case Uploads.store_product_image(product_id, upload_meta) do
+        {:ok, filename} ->
+          {:cont, {:ok, stored_uploads ++ [%{filename: filename}]}}
+
+        {:error, message} when is_binary(message) ->
+          Enum.each(stored_uploads, fn %{filename: stored_filename} ->
+            maybe_delete_product_image_assets(stored_filename)
+          end)
+
+          {:halt, {:error, message}}
+
+        {:error, reason} ->
+          Enum.each(stored_uploads, fn %{filename: stored_filename} ->
+            maybe_delete_product_image_assets(stored_filename)
+          end)
+
+          {:halt, {:error, inspect(reason)}}
+      end
+    end)
+  end
+
+  defp extract_inserted_product_images(changes) do
+    changes
+    |> Enum.filter(fn
+      {{:product_image, _display_order}, %ProductImage{}} -> true
+      _other -> false
+    end)
+    |> Enum.sort_by(fn {{:product_image, display_order}, _product_image} -> display_order end)
+    |> Enum.map(fn {_key, product_image} -> product_image end)
   end
 end

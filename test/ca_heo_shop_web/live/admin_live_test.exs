@@ -192,6 +192,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Giu day gon gang tren ban lam viec."
     assert html =~ "Image preview"
     assert html =~ "Product images"
+    assert html =~ "Upload image"
     assert html =~ "Copy"
     assert html =~ "Delete"
     assert html =~ "View original"
@@ -816,6 +817,156 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert html =~ ~s(data-copy-text="/images/storefront/safe-primary.jpg")
     refute html =~ "/images/storefront/foreign-image.jpg"
+  end
+
+  test "clicking upload image opens the dialog", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "upload-product-image-dialog",
+        name_vi: "San pham tai anh",
+        name_en: "Upload product image dialog"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    html =
+      view
+      |> element("#open-upload-product-image-dialog")
+      |> render_click()
+
+    assert html =~ "Upload product image"
+    assert html =~ ~s(id="product-image-upload-form")
+    assert html =~ "Upload image"
+    assert html =~ "Cancel"
+    assert html =~ "Maximum 10 files. Maximum file size: 2MB each."
+  end
+
+  test "uploads a product image from the detail page and selects it when it is the first image",
+       %{
+         conn: conn
+       } do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "upload-product-image",
+        name_vi: "San pham tai anh moi",
+        name_en: "Upload product image"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-upload-product-image-dialog")
+      |> render_click()
+
+    upload =
+      file_input(view, "#product-image-upload-form", :product_image, [
+        %{name: "product-upload.jpeg", content: "fake-jpeg", type: "image/jpeg"}
+      ])
+
+    assert render_upload(upload, "product-upload.jpeg") =~ "100%"
+
+    html =
+      view
+      |> form("#product-image-upload-form", %{})
+      |> render_submit()
+
+    assert html =~ "Product image uploaded successfully."
+    refute html =~ ~s(id="product-image-upload-form")
+    refute html =~ "No product images"
+    refute html =~ "No image"
+
+    [uploaded_image] = CaHeoShop.Products.list_product_images(product)
+    assert uploaded_image.display_order == 0
+    assert uploaded_image.has_thumbnail == false
+    assert uploaded_image.filename =~ ~r/^#{product.id}_.+\.jpg$/
+
+    assert html =~ ~s(id="product-image-#{uploaded_image.id}")
+    assert html =~ ~s(src="/product_images/#{uploaded_image.filename}")
+    assert html =~ ~s(href="/product_images/#{uploaded_image.filename}")
+    assert html =~ uploaded_image.filename
+    assert html =~ "Selected"
+
+    assert {:ok, image_path} = Uploads.product_image_path(uploaded_image.filename)
+    assert File.exists?(image_path)
+  end
+
+  test "submitting product image upload without selecting a file shows an error", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "upload-product-image-empty",
+        name_vi: "San pham tai anh rong",
+        name_en: "Upload empty product image"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-upload-product-image-dialog")
+      |> render_click()
+
+    html =
+      view
+      |> form("#product-image-upload-form", %{})
+      |> render_submit()
+
+    assert html =~ "Please select an image file to upload."
+    assert html =~ "Upload product image"
+    assert CaHeoShop.Products.list_product_images(product) == []
+  end
+
+  test "rejects unsupported product image uploads", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "upload-product-image-invalid",
+        name_vi: "San pham tai anh sai",
+        name_en: "Upload invalid product image"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-upload-product-image-dialog")
+      |> render_click()
+
+    upload =
+      file_input(view, "#product-image-upload-form", :product_image, [
+        %{name: "product-upload.gif", content: "fake-gif", type: "image/gif"}
+      ])
+
+    assert {:error, [[_ref, :not_accepted]]} = render_upload(upload, "product-upload.gif")
+  end
+
+  test "rejects selecting more than 10 product image uploads", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "too-many-product-image-uploads",
+        name_vi: "San pham qua nhieu anh",
+        name_en: "Too many product images"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-upload-product-image-dialog")
+      |> render_click()
+
+    upload_entries =
+      for index <- 1..11 do
+        %{name: "product-upload-#{index}.jpg", content: "jpg-data-#{index}", type: "image/jpeg"}
+      end
+
+    upload = file_input(view, "#product-image-upload-form", :product_image, upload_entries)
+
+    assert {:error, [[_ref, :too_many_files]]} = render_upload(upload, "product-upload-11.jpg")
   end
 
   test "renders admin product detail empty variants state", %{conn: conn} do
