@@ -159,6 +159,38 @@ defmodule CaHeoShop.GenServer.ThumbnailGeneratorTest do
     end
   end
 
+  describe "process_pending_thumbnails/0" do
+    test "processes pending collection images and product images in one pass" do
+      collection = collection_fixture(image_filename: nil)
+      collection_upload_path = write_temp_upload!("collection.png", "png-data")
+
+      assert {:ok, uploaded_collection} =
+               Collections.replace_collection_image(collection, %{
+                 path: collection_upload_path,
+                 client_name: "collection.png"
+               })
+
+      product = product_fixture()
+      product_upload_path = write_temp_upload!("product-image.png", "png-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: product_upload_path,
+                 client_name: "product-image.png"
+               })
+
+      Application.put_env(:ca_heo_shop, :ffmpeg_runner, __MODULE__.FFmpegRunnerSuccess)
+
+      ThumbnailGenerator.process_pending_thumbnails()
+
+      updated_collection = Collections.get_collection!(uploaded_collection.id)
+      updated_product_image = Products.get_product_image!(product_image.id)
+
+      assert updated_collection.has_thumbnail == true
+      assert updated_product_image.has_thumbnail == true
+    end
+  end
+
   defmodule FFmpegRunnerSuccess do
     def generate_square_thumbnail(_input_path, output_path, 500) do
       File.write!(output_path, "thumb-data")

@@ -1,8 +1,8 @@
-# Task 039-13: Apply ThumbnailGenerator To Product Images
+# Task 039-14: Apply ThumbnailGenerator To Product Images
 
 ## Filename
 
-`039-13_apply_thumbnail_generator_to_product_images.md`
+`039-14_apply_thumbnail_generator_to_product_images.md`
 
 ## Goal
 
