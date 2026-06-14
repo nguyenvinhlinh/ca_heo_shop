@@ -719,7 +719,8 @@ defmodule CaHeoShopWeb.ProductLive do
       </:actions>
     </AdminLive.page_header>
 
-    <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+
+     <section class="mt-6 grid gap-6 ">
       <div class="space-y-6">
         <div class="card bg-base-100 shadow-sm">
           <div class="card-body gap-5">
@@ -890,13 +891,16 @@ defmodule CaHeoShopWeb.ProductLive do
         </div>
       </div>
 
-      <div class="space-y-6">
+      <div class="space-y-6 grid md:grid-cols-3 gap-6">
+
         <.product_image_preview_panel selected_image={@selected_image} />
-        <.product_images_panel
-          product_images={@product.product_images}
-          selected_image={@selected_image}
-          uploads={@uploads}
-        />
+        <div class="col-span-2">
+          <.product_images_panel
+            product_images={@product.product_images}
+            selected_image={@selected_image}
+            uploads={@uploads}
+          />
+        </div>
       </div>
     </section>
 
@@ -1166,7 +1170,7 @@ defmodule CaHeoShopWeb.ProductLive do
               <button
                 id={"copy-product-image-filename-#{@selected_image.id}"}
                 type="button"
-                class="btn btn-xs"
+                class="btn btn-sm btn-accent"
                 phx-hook="CopyToClipboard"
                 data-copy-text={@selected_image.filename}
               >
@@ -1186,7 +1190,7 @@ defmodule CaHeoShopWeb.ProductLive do
               <button
                 id={"copy-product-image-thumbnail-#{@selected_image.id}"}
                 type="button"
-                class="btn btn-xs"
+                class="btn btn-sm btn-accent"
                 phx-hook="CopyToClipboard"
                 data-copy-text={thumbnail_copy_path}
               >
