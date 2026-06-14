@@ -18,6 +18,8 @@ defmodule CaHeoShopWeb.ProductLive do
       |> assign(:product_form, to_form(Products.change_product(%Product{})))
       |> assign(:product_summary_form, to_form(Products.change_product_summary(%Product{})))
       |> assign(:show_product_summary_dialog, false)
+      |> assign(:product_content_form, to_form(Products.change_product_content(%Product{})))
+      |> assign(:show_product_content_dialog, false)
       |> assign(:variant_form, to_form(Products.change_product_variant(%ProductVariant{})))
       |> assign(:show_variant_dialog, false)
       |> assign(:variant_dialog_action, :new)
@@ -106,6 +108,57 @@ defmodule CaHeoShopWeb.ProductLive do
       |> Map.put(:action, :validate)
 
     {:noreply, assign(socket, :product_summary_form, to_form(changeset))}
+  end
+
+  def handle_event("open-edit-product-content-dialog", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_product_content_dialog, true)
+     |> assign(
+       :product_content_form,
+       to_form(Products.change_product_content(socket.assigns.selected_product))
+     )}
+  end
+
+  def handle_event("close-edit-product-content-dialog", _params, socket) do
+    {:noreply, close_product_content_dialog(socket)}
+  end
+
+  def handle_event("validate-product-content", %{"product" => params}, socket) do
+    changeset =
+      socket.assigns.selected_product
+      |> Products.change_product_content(params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :product_content_form, to_form(changeset))}
+  end
+
+  def handle_event("save-product-content", %{"product" => params}, socket) do
+    product = socket.assigns.selected_product
+
+    case Products.update_product_content(product, params) do
+      {:ok, _updated_product} ->
+        refreshed_product = Products.get_admin_product!(product.id)
+
+        {:noreply,
+         socket
+         |> assign(:selected_product, refreshed_product)
+         |> assign(
+           :selected_product_image,
+           refreshed_selected_product_image(
+             refreshed_product.product_images,
+             socket.assigns.selected_product_image
+           )
+         )
+         |> close_product_content_dialog()
+         |> put_flash(:info, "Product content updated successfully.")}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply,
+         socket
+         |> assign(:show_product_content_dialog, true)
+         |> assign(:product_content_form, to_form(Map.put(changeset, :action, :validate)))}
+    end
   end
 
   def handle_event("save-product-summary", %{"product" => params}, socket) do
@@ -306,6 +359,8 @@ defmodule CaHeoShopWeb.ProductLive do
               selected_image={@selected_product_image}
               product_summary_form={@product_summary_form}
               show_product_summary_dialog={@show_product_summary_dialog}
+              product_content_form={@product_content_form}
+              show_product_content_dialog={@show_product_content_dialog}
               product_form_collection_options={@product_form_collection_options}
               variant_form={@variant_form}
               show_variant_dialog={@show_variant_dialog}
@@ -560,6 +615,8 @@ defmodule CaHeoShopWeb.ProductLive do
   attr :selected_image, :map, default: nil
   attr :product_summary_form, :any, required: true
   attr :show_product_summary_dialog, :boolean, required: true
+  attr :product_content_form, :any, required: true
+  attr :show_product_content_dialog, :boolean, required: true
   attr :product_form_collection_options, :list, required: true
   attr :variant_form, :any, required: true
   attr :show_variant_dialog, :boolean, required: true
@@ -601,7 +658,7 @@ defmodule CaHeoShopWeb.ProductLive do
                 class="btn btn-accent btn-sm"
                 phx-click="open-edit-product-dialog"
               >
-                Edit Product
+                Edit
               </button>
             </div>
 
@@ -616,11 +673,21 @@ defmodule CaHeoShopWeb.ProductLive do
 
         <div class="card bg-base-100 shadow-sm">
           <div class="card-body gap-5">
-            <div>
-              <h2 class="card-title text-base">Product content</h2>
-              <p class="text-sm text-base-content/60">
-                Base product descriptions only. Variants and image management will be added later.
-              </p>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 class="card-title text-base">Product content</h2>
+                <p class="text-sm text-base-content/60">
+                  Base product descriptions only. Variants and image management will be added later.
+                </p>
+              </div>
+              <button
+                id="open-edit-product-content-dialog"
+                type="button"
+                class="btn btn-accent btn-sm"
+                phx-click="open-edit-product-content-dialog"
+              >
+                Edit
+              </button>
             </div>
 
             <div class="grid gap-4 2xl:grid-cols-2">
@@ -648,10 +715,10 @@ defmodule CaHeoShopWeb.ProductLive do
               <button
                 id="open-new-variant-dialog"
                 type="button"
-                class="btn btn-primary btn-sm"
+                class="btn btn-accent btn-sm"
                 phx-click="open-new-variant-dialog"
               >
-                New variant
+              New
               </button>
             </div>
 
@@ -759,6 +826,11 @@ defmodule CaHeoShopWeb.ProductLive do
       form={@product_summary_form}
       collection_options={@product_form_collection_options}
     />
+
+    <.product_content_dialog
+      show={@show_product_content_dialog}
+      form={@product_content_form}
+    />
     """
   end
 
@@ -809,6 +881,63 @@ defmodule CaHeoShopWeb.ProductLive do
                 Cancel
               </button>
               <button type="submit" class="btn btn-primary">Update product</button>
+            </div>
+          </.form>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  attr :show, :boolean, required: true
+  attr :form, :any, required: true
+
+  def product_content_dialog(assigns) do
+    ~H"""
+    <div :if={@show} class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        class="absolute inset-0 bg-base-content/40 backdrop-blur-sm"
+        aria-label="Close product content dialog"
+        phx-click="close-edit-product-content-dialog"
+      />
+
+      <div class="relative z-10 w-full max-w-4xl rounded-box bg-base-100 shadow-xl">
+        <div class="border-b border-base-300 px-6 py-4">
+          <h2 class="text-lg font-semibold">Edit Product Content</h2>
+        </div>
+
+        <div class="px-6 py-5">
+          <.form
+            for={@form}
+            id="product-content-form"
+            phx-change="validate-product-content"
+            phx-submit="save-product-content"
+          >
+            <div class="grid gap-4">
+              <.input
+                field={@form[:description_en]}
+                type="textarea"
+                label="English description"
+                class="textarea w-full min-h-40"
+              />
+              <.input
+                field={@form[:description_vi]}
+                type="textarea"
+                label="Vietnamese description"
+                class="textarea w-full min-h-40"
+              />
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                class="btn btn-ghost"
+                phx-click="close-edit-product-content-dialog"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Update content</button>
             </div>
           </.form>
         </div>
@@ -1144,6 +1273,8 @@ defmodule CaHeoShopWeb.ProductLive do
     |> assign(:product_form, to_form(Products.change_product(%Product{})))
     |> assign(:product_summary_form, to_form(Products.change_product_summary(%Product{})))
     |> assign(:show_product_summary_dialog, false)
+    |> assign(:product_content_form, to_form(Products.change_product_content(%Product{})))
+    |> assign(:show_product_content_dialog, false)
     |> assign(:variant_form, to_form(Products.change_product_variant(%ProductVariant{})))
     |> assign(:show_variant_dialog, false)
     |> assign(:variant_dialog_action, :new)
@@ -1160,6 +1291,8 @@ defmodule CaHeoShopWeb.ProductLive do
     |> assign(:selected_product_image, default_selected_product_image(product))
     |> assign(:product_summary_form, to_form(Products.change_product_summary(product)))
     |> assign(:show_product_summary_dialog, false)
+    |> assign(:product_content_form, to_form(Products.change_product_content(product)))
+    |> assign(:show_product_content_dialog, false)
     |> assign(:variant_form, to_form(new_product_variant_changeset(product)))
     |> assign(:show_variant_dialog, false)
     |> assign(:variant_dialog_action, :new)
@@ -1271,6 +1404,14 @@ defmodule CaHeoShopWeb.ProductLive do
     socket
     |> assign(:show_product_summary_dialog, false)
     |> assign(:product_summary_form, to_form(Products.change_product_summary(product)))
+  end
+
+  defp close_product_content_dialog(socket) do
+    product = socket.assigns.selected_product
+
+    socket
+    |> assign(:show_product_content_dialog, false)
+    |> assign(:product_content_form, to_form(Products.change_product_content(product)))
   end
 
   defp new_product_variant_changeset(product) do

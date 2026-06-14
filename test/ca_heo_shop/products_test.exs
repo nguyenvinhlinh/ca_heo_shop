@@ -201,6 +201,60 @@ defmodule CaHeoShop.ProductsTest do
       assert "has invalid format" in errors_on(changeset).slug
     end
 
+    test "update_product_content/2 updates only content fields" do
+      product =
+        product_fixture(
+          slug: "content-only",
+          name_vi: "Ten goc",
+          name_en: "Original name",
+          description_vi: "Mo ta cu",
+          description_en: "Old description"
+        )
+
+      assert {:ok, updated_product} =
+               Products.update_product_content(product, %{
+                 description_vi: "Mo ta moi",
+                 description_en: "New description",
+                 slug: "ignored-slug",
+                 name_vi: "Ignored name",
+                 name_en: "Ignored EN"
+               })
+
+      assert updated_product.description_vi == "Mo ta moi"
+      assert updated_product.description_en == "New description"
+      assert updated_product.slug == "content-only"
+      assert updated_product.name_vi == "Ten goc"
+      assert updated_product.name_en == "Original name"
+    end
+
+    test "update_product_content/2 allows clearing descriptions and validates length" do
+      product =
+        product_fixture(
+          description_vi: "Mo ta cu",
+          description_en: "Old description"
+        )
+
+      assert {:ok, updated_product} =
+               Products.update_product_content(product, %{
+                 description_vi: "",
+                 description_en: nil
+               })
+
+      assert updated_product.description_vi == nil
+      assert updated_product.description_en == nil
+
+      long_text = String.duplicate("a", 10_001)
+
+      assert {:error, changeset} =
+               Products.update_product_content(product, %{
+                 description_vi: long_text,
+                 description_en: long_text
+               })
+
+      assert "should be at most 10000 character(s)" in errors_on(changeset).description_vi
+      assert "should be at most 10000 character(s)" in errors_on(changeset).description_en
+    end
+
     test "reorder_product_images/2 updates display_order sequentially and accepts string ids" do
       product = product_fixture()
 

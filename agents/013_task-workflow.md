@@ -8,7 +8,7 @@
 
 [DONE] ✅ [13/06/2026 21:30] 039-10_admin_edit_product_summary_dialog.md
 
-[todo] 039-11_admin_edit_product_content_dialog.md
+[DONE] ✅ [14/06/2026 10:17] 039-11_admin_edit_product_content_dialog.md
 
 [Backlog] 033_update-users-with-role-fullname.md
 

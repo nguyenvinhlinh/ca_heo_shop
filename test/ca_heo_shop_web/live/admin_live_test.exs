@@ -181,7 +181,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert html =~ "Product detail"
     assert html =~ "Product summary"
-    assert html =~ "Edit Product"
+    assert html =~ ~s(id="open-edit-product-dialog")
+    assert html =~ ~r/>\s*Edit\s*<\/button>/
     assert html =~ "ID ##{product.id}"
     assert html =~ "Kem cap nam cham"
     assert html =~ "Magnetic Cable Clip"
@@ -213,7 +214,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     refute html =~ "/images/storefront/magnetic-cable-clip-detail_500x500px.jpg"
     refute html =~ "/images/storefront/other-product.jpg"
     assert html =~ "Product variants"
-    assert html =~ "New variant"
+    assert html =~ ~s(id="open-new-variant-dialog")
+    assert html =~ ~r/>\s*New\s*<\/button>/
     assert html =~ ~s(phx-click="open-edit-variant-dialog")
     assert html =~ ~s(id="product-variants-sortable")
     assert html =~ ~s(phx-hook="ProductVariantSortable")
@@ -459,6 +461,148 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert unchanged_product.name_en == "Valid name"
   end
 
+  test "clicking edit product content opens the content dialog", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "edit-product-content",
+        name_vi: "Ten san pham",
+        name_en: "Product name",
+        description_vi: "Mo ta viet",
+        description_en: "English description"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    html =
+      view
+      |> element("#open-edit-product-content-dialog")
+      |> render_click()
+
+    assert html =~ "Edit Product Content"
+    assert html =~ "English description"
+    assert html =~ "Vietnamese description"
+    assert html =~ "Update content"
+    assert html =~ "Cancel"
+    assert html =~ ~s(name="product[description_en]")
+    assert html =~ ~s(name="product[description_vi]")
+    refute html =~ ~s(name="product[collection_id]")
+    refute html =~ ~s(name="product[slug]")
+    refute html =~ ~s(name="product[name_vi]")
+    refute html =~ ~s(name="product[name_en]")
+  end
+
+  test "updates product content from the detail dialog and ignores summary params", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "content-update",
+        name_vi: "Ten cu",
+        name_en: "Old name",
+        description_vi: "Mo ta viet cu",
+        description_en: "Old description"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-edit-product-content-dialog")
+      |> render_click()
+
+    html =
+      render_submit(view, "save-product-content", %{
+        "product" => %{
+          "description_vi" => "Mo ta viet moi",
+          "description_en" => "New description",
+          "slug" => "ignored-slug",
+          "name_vi" => "Ignored vi",
+          "name_en" => "Ignored en"
+        }
+      })
+
+    assert html =~ "Product content updated successfully."
+    refute html =~ "Edit Product Content"
+    assert html =~ "Mo ta viet moi"
+    assert html =~ "New description"
+    assert html =~ "/content-update"
+    assert html =~ "Ten cu"
+    assert html =~ "Old name"
+
+    updated_product = CaHeoShop.Products.get_product!(product.id)
+    assert updated_product.description_vi == "Mo ta viet moi"
+    assert updated_product.description_en == "New description"
+    assert updated_product.slug == "content-update"
+    assert updated_product.name_vi == "Ten cu"
+    assert updated_product.name_en == "Old name"
+  end
+
+  test "product content update can clear descriptions", %{conn: conn} do
+    product =
+      product_fixture(
+        description_vi: "Mo ta viet cu",
+        description_en: "Old description"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-edit-product-content-dialog")
+      |> render_click()
+
+    html =
+      view
+      |> form("#product-content-form",
+        product: %{
+          description_vi: "",
+          description_en: ""
+        }
+      )
+      |> render_submit()
+
+    assert html =~ "Product content updated successfully."
+    assert html =~ "No description"
+
+    updated_product = CaHeoShop.Products.get_product!(product.id)
+    assert updated_product.description_vi == nil
+    assert updated_product.description_en == nil
+  end
+
+  test "invalid product content submit keeps the dialog open and shows errors", %{conn: conn} do
+    product =
+      product_fixture(
+        description_vi: "Mo ta viet cu",
+        description_en: "Old description"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    _html =
+      view
+      |> element("#open-edit-product-content-dialog")
+      |> render_click()
+
+    long_text = String.duplicate("a", 10_001)
+
+    html =
+      view
+      |> form("#product-content-form",
+        product: %{
+          description_vi: long_text,
+          description_en: long_text
+        }
+      )
+      |> render_submit()
+
+    assert html =~ "Edit Product Content"
+    assert html =~ "should be at most 10000 character(s)"
+
+    unchanged_product = CaHeoShop.Products.get_product!(product.id)
+    assert unchanged_product.description_vi == "Mo ta viet cu"
+    assert unchanged_product.description_en == "Old description"
+  end
+
   test "selecting a product image updates the preview and selected state", %{conn: conn} do
     product =
       product_fixture(
@@ -692,7 +836,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Product images"
     assert html =~ "No product images"
     assert html =~ "Product variants"
-    assert html =~ "New variant"
+    assert html =~ ~s(id="open-new-variant-dialog")
+    assert html =~ ~r/>\s*New\s*<\/button>/
     refute html =~ "New product variant"
     assert html =~ "No variants"
     assert html =~ ~s(class="btn btn-xs" disabled)
@@ -1212,7 +1357,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
 
     assert html =~ "Product variant removed successfully."
     assert html =~ "No variants"
-    assert html =~ "New variant"
+    assert html =~ ~s(id="open-new-variant-dialog")
+    assert html =~ ~r/>\s*New\s*<\/button>/
   end
 
   test "deleting the variant being edited closes the dialog safely", %{conn: conn} do

@@ -45,4 +45,12 @@ defmodule CaHeoShop.Products.Product do
     |> unique_constraint(:slug)
     |> foreign_key_constraint(:collection_id)
   end
+
+  @doc false
+  def content_changeset(product, attrs) do
+    product
+    |> cast(attrs, [:description_vi, :description_en])
+    |> validate_length(:description_vi, max: 10_000)
+    |> validate_length(:description_en, max: 10_000)
+  end
 end
