@@ -195,6 +195,8 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Upload image"
     assert html =~ "Copy"
     assert html =~ "Delete"
+    assert html =~ ~s(phx-click="delete-product-image")
+    assert html =~ ~s(data-confirm="Delete this product image?")
     assert html =~ "View original"
     assert html =~ "Drag"
     assert html =~ ~s(id="product-images-sortable")
@@ -1577,6 +1579,123 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Product variant not found."
     assert CaHeoShop.Products.get_product_variant!(foreign_variant.id).id == foreign_variant.id
     assert CaHeoShop.Products.get_product_variant!(local_variant.id).id == local_variant.id
+  end
+
+  test "deletes the selected product image from the detail page", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "delete-product-image",
+        name_vi: "San pham xoa anh",
+        name_en: "Delete product image product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    first_upload_path = write_temp_upload!("delete-first.jpg", "jpg-data-1")
+    second_upload_path = write_temp_upload!("delete-second.png", "png-data-2")
+
+    assert {:ok, first_image} =
+             CaHeoShop.Products.add_product_image_upload(product, %{
+               path: first_upload_path,
+               client_name: "delete-first.jpg"
+             })
+
+    assert {:ok, second_image} =
+             CaHeoShop.Products.add_product_image_upload(product, %{
+               path: second_upload_path,
+               client_name: "delete-second.png"
+             })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    html =
+      view
+      |> render_click("delete-product-image", %{"id" => Integer.to_string(first_image.id)})
+
+    assert html =~ "Product image deleted successfully."
+    refute html =~ ~s(id="product-image-#{first_image.id}")
+    assert html =~ ~s(id="product-image-#{second_image.id}")
+    assert html =~ "Selected"
+    refute html =~ ~s(data-copy-text="#{first_image.filename}")
+    assert html =~ ~s(data-copy-text="#{second_image.filename}")
+
+    assert_raise Ecto.NoResultsError, fn ->
+      CaHeoShop.Products.get_product_image!(first_image.id)
+    end
+  end
+
+  test "deleting the last product image clears the preview state", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "delete-last-product-image",
+        name_vi: "San pham xoa anh cuoi",
+        name_en: "Delete last product image product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    upload_path = write_temp_upload!("delete-last.jpg", "jpg-data")
+
+    assert {:ok, product_image} =
+             CaHeoShop.Products.add_product_image_upload(product, %{
+               path: upload_path,
+               client_name: "delete-last.jpg"
+             })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    html =
+      view
+      |> render_click("delete-product-image", %{"id" => Integer.to_string(product_image.id)})
+
+    assert html =~ "Product image deleted successfully."
+    assert html =~ "No product images"
+    assert html =~ "No image"
+    refute html =~ ~s(phx-click="delete-product-image")
+    refute html =~ ~s(data-copy-text="#{product_image.filename}")
+  end
+
+  test "deleting a foreign product image is ignored safely", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "safe-delete-product-image",
+        name_vi: "San pham xoa anh an toan",
+        name_en: "Safe delete product image product",
+        description_vi: "Mo ta",
+        description_en: "Description"
+      )
+
+    own_upload_path = write_temp_upload!("own-delete-safe.jpg", "jpg-data")
+    foreign_upload_path = write_temp_upload!("foreign-delete-safe.jpg", "jpg-data")
+
+    assert {:ok, own_image} =
+             CaHeoShop.Products.add_product_image_upload(product, %{
+               path: own_upload_path,
+               client_name: "own-delete-safe.jpg"
+             })
+
+    assert {:ok, foreign_image} =
+             CaHeoShop.Products.add_product_image_upload(product_fixture(collection_id: nil), %{
+               path: foreign_upload_path,
+               client_name: "foreign-delete-safe.jpg"
+             })
+
+    {:ok, view, html} = live(conn, ~p"/admin/products/#{product.id}")
+
+    assert html =~ ~s(id="product-image-#{own_image.id}")
+
+    html =
+      view
+      |> render_click("delete-product-image", %{"id" => Integer.to_string(foreign_image.id)})
+
+    assert html =~ "Product image not found."
+    assert html =~ ~s(id="product-image-#{own_image.id}")
+
+    assert %CaHeoShop.Products.ProductImage{} =
+             CaHeoShop.Products.get_product_image!(foreign_image.id)
   end
 
   test "renders new product page", %{conn: conn} do

@@ -811,6 +811,32 @@ defmodule CaHeoShop.ProductsTest do
       refute File.exists?(thumbnail_path)
     end
 
+    test "delete_product_image/1 succeeds even when managed files are already missing" do
+      product = product_fixture()
+      upload_path = write_temp_upload!("delete-missing-product-image.jpg", "jpg-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "delete-missing-product-image.jpg"
+               })
+
+      assert {:ok, stored_path} = Uploads.product_image_path(product_image.filename)
+
+      assert {:ok, thumbnail_path} =
+               Uploads.product_image_path(Uploads.thumbnail_filename(product_image.filename))
+
+      File.rm!(stored_path)
+      File.write!(thumbnail_path, "thumb-data")
+      File.rm!(thumbnail_path)
+
+      assert {:ok, %ProductImage{}} = Products.delete_product_image(product_image)
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Products.get_product_image!(product_image.id)
+      end
+    end
+
     test "deleting a product deletes its product images" do
       product = product_fixture()
       product_image = product_image_fixture(product)

@@ -270,6 +270,16 @@ defmodule CaHeoShopWeb.ProductLive do
     end
   end
 
+  def handle_event("delete-product-image", %{"id" => id}, socket) do
+    case find_product_image(socket.assigns.selected_product, id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Product image not found.")}
+
+      product_image ->
+        delete_product_image(socket, product_image)
+    end
+  end
+
   def handle_event("reorder-product-images", %{"ids" => ordered_image_ids}, socket) do
     product = socket.assigns.selected_product
 
@@ -715,12 +725,11 @@ defmodule CaHeoShopWeb.ProductLive do
       description="Review the base product information before variants and image management are added."
     >
       <:actions>
-        <.link navigate={~p"/admin/products"} class="btn btn-ghost btn-sm">Back to products</.link>
+        <.link navigate={~p"/admin/products"} class="btn btn-sm btn-primary">Back to products</.link>
       </:actions>
     </AdminLive.page_header>
 
-
-     <section class="mt-6 grid gap-6 ">
+    <section class="mt-6 grid gap-6 ">
       <div class="space-y-6">
         <div class="card bg-base-100 shadow-sm">
           <div class="card-body gap-5">
@@ -892,7 +901,6 @@ defmodule CaHeoShopWeb.ProductLive do
       </div>
 
       <div class="space-y-6 grid md:grid-cols-3 gap-6">
-
         <.product_image_preview_panel selected_image={@selected_image} />
         <div class="col-span-2">
           <.product_images_panel
@@ -1203,7 +1211,20 @@ defmodule CaHeoShopWeb.ProductLive do
         </div>
 
         <div class="flex flex-wrap gap-2">
-          <button type="button" class="btn btn-error btn-sm" disabled>Delete</button>
+          <%= if @selected_image do %>
+            <button
+              id={"delete-product-image-#{@selected_image.id}"}
+              type="button"
+              class="btn btn-error btn-sm"
+              phx-click="delete-product-image"
+              phx-value-id={@selected_image.id}
+              data-confirm="Delete this product image?"
+            >
+              Delete
+            </button>
+          <% else %>
+            <button type="button" class="btn btn-error btn-sm" disabled>Delete</button>
+          <% end %>
 
           <%= if original_path = product_image_original_path(@selected_image) do %>
             <a
@@ -1672,6 +1693,10 @@ defmodule CaHeoShopWeb.ProductLive do
     Enum.find(product.product_variants, &(to_string(&1.id) == to_string(variant_id)))
   end
 
+  defp find_product_image(product, product_image_id) do
+    Enum.find(product.product_images, &(to_string(&1.id) == to_string(product_image_id)))
+  end
+
   defp delete_product_variant(socket, %ProductVariant{} = product_variant) do
     case Products.delete_product_variant(product_variant) do
       {:ok, _deleted_variant} ->
@@ -1704,6 +1729,28 @@ defmodule CaHeoShopWeb.ProductLive do
 
       _other ->
         socket
+    end
+  end
+
+  defp delete_product_image(socket, product_image) do
+    case Products.delete_product_image(product_image) do
+      {:ok, _deleted_product_image} ->
+        refreshed_product = Products.get_admin_product!(socket.assigns.selected_product.id)
+
+        {:noreply,
+         socket
+         |> assign(:selected_product, refreshed_product)
+         |> assign(
+           :selected_product_image,
+           refreshed_selected_product_image(
+             refreshed_product.product_images,
+             socket.assigns.selected_product_image
+           )
+         )
+         |> put_flash(:info, "Product image deleted successfully.")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Could not delete product image.")}
     end
   end
 
