@@ -2,7 +2,7 @@
 
 [DONE] ✅ [15/06/2026 09:22] 033_update-users-with-role-fullname.md
 
-[backlog] 034_allow-login-w-username-and-email.md
+[DONE] ✅ [15/06/2026 09:31] 034_allow-login-w-username-and-email.md
 
 [backlog] 035_add-role-based-route-authorization.md
 

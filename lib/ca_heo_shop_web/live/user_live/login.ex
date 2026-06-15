@@ -69,9 +69,9 @@ defmodule CaHeoShopWeb.UserLive.Login do
         >
           <.input
             readonly={!!@current_scope}
-            field={f[:email]}
-            type="email"
-            label="Email"
+            field={f[:login]}
+            type="text"
+            label="Email or username"
             autocomplete="username"
             spellcheck="false"
             required
@@ -97,11 +97,12 @@ defmodule CaHeoShopWeb.UserLive.Login do
 
   @impl true
   def mount(_params, _session, socket) do
-    email =
-      Phoenix.Flash.get(socket.assigns.flash, :email) ||
+    login =
+      Phoenix.Flash.get(socket.assigns.flash, :login) ||
+        get_in(socket.assigns, [:current_scope, Access.key(:user), Access.key(:username)]) ||
         get_in(socket.assigns, [:current_scope, Access.key(:user), Access.key(:email)])
 
-    form = to_form(%{"email" => email}, as: "user")
+    form = to_form(%{"login" => login, "email" => login}, as: "user")
 
     {:ok, assign(socket, form: form, trigger_submit: false)}
   end

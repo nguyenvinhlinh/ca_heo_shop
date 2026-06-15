@@ -8,13 +8,13 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
     %{unconfirmed_user: unconfirmed_user_fixture(), user: user_fixture()}
   end
 
-  describe "POST /users/log-in - email and password" do
+  describe "POST /users/log-in - login and password" do
     test "logs the user in", %{conn: conn, user: user} do
       user = set_password(user)
 
       conn =
         post(conn, ~p"/users/log-in", %{
-          "user" => %{"email" => user.email, "password" => valid_user_password()}
+          "user" => %{"login" => user.email, "password" => valid_user_password()}
         })
 
       assert get_session(conn, :user_token)
@@ -34,7 +34,7 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
       conn =
         post(conn, ~p"/users/log-in", %{
           "user" => %{
-            "email" => user.email,
+            "login" => user.email,
             "password" => valid_user_password(),
             "remember_me" => "true"
           }
@@ -52,7 +52,7 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
         |> init_test_session(user_return_to: "/foo/bar")
         |> post(~p"/users/log-in", %{
           "user" => %{
-            "email" => user.email,
+            "login" => user.email,
             "password" => valid_user_password()
           }
         })
@@ -61,13 +61,30 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Welcome back!"
     end
 
+    test "logs the user in with username", %{conn: conn} do
+      {:ok, user} =
+        Accounts.create_seed_user(%{
+          username: "controller_admin",
+          role: "admin",
+          password: valid_user_password()
+        })
+
+      conn =
+        post(conn, ~p"/users/log-in", %{
+          "user" => %{"login" => user.username, "password" => valid_user_password()}
+        })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/"
+    end
+
     test "redirects to login page with invalid credentials", %{conn: conn, user: user} do
       conn =
         post(conn, ~p"/users/log-in?mode=password", %{
-          "user" => %{"email" => user.email, "password" => "invalid_password"}
+          "user" => %{"login" => user.email, "password" => "invalid_password"}
         })
 
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid email or password"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid login or password"
       assert redirected_to(conn) == ~p"/users/log-in"
     end
   end

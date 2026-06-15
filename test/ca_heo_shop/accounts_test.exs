@@ -35,6 +35,78 @@ defmodule CaHeoShop.AccountsTest do
     end
   end
 
+  describe "get_user_by_login_and_password/2" do
+    test "returns nil for unknown login" do
+      refute Accounts.get_user_by_login_and_password("unknown_login", valid_user_password())
+    end
+
+    test "returns nil for wrong password" do
+      user = user_fixture() |> set_password()
+      refute Accounts.get_user_by_login_and_password(user.email, "invalid")
+    end
+
+    test "logs in email-only users with email" do
+      %{id: id} = user = user_fixture() |> set_password()
+
+      assert %User{id: ^id} =
+               Accounts.get_user_by_login_and_password(user.email, valid_user_password())
+    end
+
+    test "logs in username-only users with username" do
+      {:ok, user} =
+        Accounts.create_seed_user(%{
+          username: "login_admin",
+          role: "admin",
+          password: valid_user_password()
+        })
+
+      assert %User{id: id} = user
+
+      assert %User{id: ^id} =
+               Accounts.get_user_by_login_and_password("login_admin", valid_user_password())
+    end
+
+    test "logs in users with both email and username using username" do
+      {:ok, user} =
+        Accounts.create_seed_user(%{
+          email: unique_user_email(),
+          username: "hybrid_login_user",
+          role: "customer",
+          password: valid_user_password()
+        })
+
+      assert %User{id: id} = user
+
+      assert %User{id: ^id} =
+               Accounts.get_user_by_login_and_password(
+                 "hybrid_login_user",
+                 valid_user_password()
+               )
+    end
+
+    test "returns nil for blank login" do
+      refute Accounts.get_user_by_login_and_password("   ", valid_user_password())
+    end
+
+    test "returns nil for blank password" do
+      refute Accounts.get_user_by_login_and_password("admin", "")
+    end
+
+    test "trims login before lookup" do
+      {:ok, user} =
+        Accounts.create_seed_user(%{
+          username: "trimmed_admin",
+          role: "admin",
+          password: valid_user_password()
+        })
+
+      assert %User{id: id} = user
+
+      assert %User{id: ^id} =
+               Accounts.get_user_by_login_and_password("  trimmed_admin  ", valid_user_password())
+    end
+  end
+
   describe "get_user!/1" do
     test "raises if id is invalid" do
       assert_raise Ecto.NoResultsError, fn ->

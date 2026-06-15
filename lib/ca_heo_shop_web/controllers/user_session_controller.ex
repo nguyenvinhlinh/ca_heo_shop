@@ -29,19 +29,20 @@ defmodule CaHeoShopWeb.UserSessionController do
     end
   end
 
-  # email + password login
+  # email/username + password login
   defp create(conn, %{"user" => user_params}, info) do
-    %{"email" => email, "password" => password} = user_params
+    login = Map.get(user_params, "login") || Map.get(user_params, "email") || ""
+    password = Map.get(user_params, "password", "")
 
-    if user = Accounts.get_user_by_email_and_password(email, password) do
+    if user = Accounts.get_user_by_login_and_password(login, password) do
       conn
       |> put_flash(:info, info)
       |> UserAuth.log_in_user(user, user_params)
     else
-      # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
+      # In order to prevent user enumeration attacks, don't disclose whether the login exists.
       conn
-      |> put_flash(:error, "Invalid email or password")
-      |> put_flash(:email, String.slice(email, 0, 160))
+      |> put_flash(:error, "Invalid login or password")
+      |> put_flash(:login, String.slice(login, 0, 160))
       |> redirect(to: ~p"/users/log-in")
     end
   end

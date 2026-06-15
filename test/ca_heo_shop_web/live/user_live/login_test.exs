@@ -10,6 +10,7 @@ defmodule CaHeoShopWeb.UserLive.LoginTest do
 
       assert html =~ "Log in"
       assert html =~ "Register"
+      assert html =~ "Email or username"
       assert html =~ "Log in with email"
     end
   end
@@ -51,7 +52,27 @@ defmodule CaHeoShopWeb.UserLive.LoginTest do
 
       form =
         form(lv, "#login_form_password",
-          user: %{email: user.email, password: valid_user_password(), remember_me: true}
+          user: %{login: user.email, password: valid_user_password(), remember_me: true}
+        )
+
+      conn = submit_form(form, conn)
+
+      assert redirected_to(conn) == ~p"/"
+    end
+
+    test "redirects if user logs in with valid username credentials", %{conn: conn} do
+      {:ok, user} =
+        CaHeoShop.Accounts.create_seed_user(%{
+          username: "live_admin",
+          role: "admin",
+          password: valid_user_password()
+        })
+
+      {:ok, lv, _html} = live(conn, ~p"/users/log-in")
+
+      form =
+        form(lv, "#login_form_password",
+          user: %{login: user.username, password: valid_user_password(), remember_me: true}
         )
 
       conn = submit_form(form, conn)
@@ -65,12 +86,12 @@ defmodule CaHeoShopWeb.UserLive.LoginTest do
       {:ok, lv, _html} = live(conn, ~p"/users/log-in")
 
       form =
-        form(lv, "#login_form_password", user: %{email: "test@email.com", password: "123456"})
+        form(lv, "#login_form_password", user: %{login: "test@email.com", password: "123456"})
 
       render_submit(form, %{user: %{remember_me: true}})
 
       conn = follow_trigger_action(form, conn)
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid email or password"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid login or password"
       assert redirected_to(conn) == ~p"/users/log-in"
     end
   end
@@ -95,15 +116,16 @@ defmodule CaHeoShopWeb.UserLive.LoginTest do
       %{user: user, conn: log_in_user(conn, user)}
     end
 
-    test "shows login page with email filled in", %{conn: conn, user: user} do
+    test "shows login page with login filled in", %{conn: conn, user: user} do
       {:ok, _lv, html} = live(conn, ~p"/users/log-in")
 
       assert html =~ "You need to reauthenticate"
       refute html =~ "Register"
+      assert html =~ "Email or username"
       assert html =~ "Log in with email"
 
       assert html =~
-               ~s(<input type="email" name="user[email]" id="login_form_magic_email" value="#{user.email}")
+               ~s(<input type="text" name="user[login]" id="login_form_password_login" value="#{user.email}")
     end
   end
 end
