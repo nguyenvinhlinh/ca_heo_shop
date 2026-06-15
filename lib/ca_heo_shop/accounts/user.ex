@@ -2,8 +2,13 @@ defmodule CaHeoShop.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @roles ~w(system admin customer)
+
   schema "users" do
     field :email, :string
+    field :username, :string
+    field :fullname, :string
+    field :role, :string, default: "customer"
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
     field :confirmed_at, :utc_datetime
@@ -26,13 +31,37 @@ defmodule CaHeoShop.Accounts.User do
   def email_changeset(user, attrs, opts \\ []) do
     user
     |> cast(attrs, [:email])
-    |> validate_email(opts)
+    |> validate_required([:email])
+    |> validate_email_if_present(opts)
+    |> validate_email_changed()
   end
 
-  defp validate_email(changeset, opts) do
+  def registration_changeset(user, attrs, opts \\ []) do
+    user
+    |> cast(attrs, [:email])
+    |> put_change(:role, "customer")
+    |> validate_required([:email])
+    |> validate_email_if_present(opts)
+  end
+
+  def seed_changeset(user, attrs, opts \\ []) do
+    user
+    |> cast(attrs, [:email, :username, :fullname, :role, :password, :confirmed_at])
+    |> validate_required([:role, :password])
+    |> validate_email_or_username()
+    |> validate_email_if_present(opts)
+    |> validate_username_if_present()
+    |> validate_length(:fullname, max: 160)
+    |> validate_inclusion(:role, @roles)
+    |> validate_password(opts)
+    |> add_account_constraints()
+  end
+
+  def roles, do: @roles
+
+  defp validate_email_if_present(changeset, opts) do
     changeset =
       changeset
-      |> validate_required([:email])
       |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
         message: "must have the @ sign and no spaces"
       )
@@ -41,10 +70,34 @@ defmodule CaHeoShop.Accounts.User do
     if Keyword.get(opts, :validate_unique, true) do
       changeset
       |> unsafe_validate_unique(:email, CaHeoShop.Repo)
-      |> unique_constraint(:email)
-      |> validate_email_changed()
+      |> unique_constraint(:email, name: :users_email_index)
     else
       changeset
+    end
+  end
+
+  defp validate_email_or_username(changeset) do
+    email = get_field(changeset, :email)
+    username = get_field(changeset, :username)
+
+    if is_nil(email) and is_nil(username) do
+      add_error(changeset, :email, "email or username is required")
+    else
+      changeset
+    end
+  end
+
+  defp validate_username_if_present(changeset) do
+    username = get_field(changeset, :username)
+
+    if is_nil(username) do
+      changeset
+    else
+      changeset
+      |> validate_format(:username, ~r/^[a-zA-Z0-9_]+$/,
+        message: "must contain only letters, numbers, and underscore"
+      )
+      |> validate_length(:username, min: 3, max: 32)
     end
   end
 
@@ -81,12 +134,20 @@ defmodule CaHeoShop.Accounts.User do
   defp validate_password(changeset, opts) do
     changeset
     |> validate_required([:password])
-    |> validate_length(:password, min: 12, max: 72)
+    |> validate_length(:password, min: 8, max: 72)
     # Examples of additional password validation:
     # |> validate_format(:password, ~r/[a-z]/, message: "at least one lower case character")
     # |> validate_format(:password, ~r/[A-Z]/, message: "at least one upper case character")
     # |> validate_format(:password, ~r/[!?@#$%^&*_0-9]/, message: "at least one digit or punctuation character")
     |> maybe_hash_password(opts)
+  end
+
+  defp add_account_constraints(changeset) do
+    changeset
+    |> unique_constraint(:email, name: :users_email_index)
+    |> unique_constraint(:username, name: :users_username_index)
+    |> check_constraint(:role, name: :users_role_must_be_valid)
+    |> check_constraint(:email, name: :users_must_have_email_or_username)
   end
 
   defp maybe_hash_password(changeset, opts) do

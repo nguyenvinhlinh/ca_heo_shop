@@ -10,11 +10,44 @@
 # We recommend using the bang functions (`insert!`, `update!`
 # and so on) as they will fail if something goes wrong.
 
+alias CaHeoShop.Accounts
 alias CaHeoShop.Collections.Collection
 alias CaHeoShop.Products.Product
 alias CaHeoShop.Products.ProductImage
 alias CaHeoShop.Products.ProductVariant
 alias CaHeoShop.Repo
+
+# Development seed accounts only.
+# Do not use these passwords in production.
+
+confirmed_at = DateTime.utc_now(:second)
+
+Accounts.upsert_seed_user(%{
+  email: nil,
+  username: "admin",
+  fullname: "System Admin",
+  role: "system",
+  password: "1234qwer",
+  confirmed_at: confirmed_at
+})
+
+Accounts.upsert_seed_user(%{
+  email: nil,
+  username: "nguyenvinhlinh",
+  fullname: "Nguyễn Vĩnh Linh",
+  role: "admin",
+  password: "1234qwer",
+  confirmed_at: confirmed_at
+})
+
+Accounts.upsert_seed_user(%{
+  email: "customer_1@gmail.com",
+  username: nil,
+  fullname: "Customer 1",
+  role: "customer",
+  password: "1234qwer",
+  confirmed_at: confirmed_at
+})
 
 upsert_collection = fn attrs ->
   collection = Repo.get_by(Collection, slug: attrs.slug) || %Collection{}

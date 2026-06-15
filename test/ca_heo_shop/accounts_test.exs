@@ -81,9 +81,28 @@ defmodule CaHeoShop.AccountsTest do
       email = unique_user_email()
       {:ok, user} = Accounts.register_user(valid_user_attributes(email: email))
       assert user.email == email
+      assert user.role == "customer"
+      assert is_nil(user.username)
+      assert is_nil(user.fullname)
       assert is_nil(user.hashed_password)
       assert is_nil(user.confirmed_at)
       assert is_nil(user.password)
+    end
+
+    test "does not allow privileged roles through public registration" do
+      for role <- ["admin", "system"] do
+        {:ok, user} =
+          Accounts.register_user(%{
+            email: unique_user_email(),
+            role: role,
+            username: "should_not_be_set",
+            fullname: "Ignored Name"
+          })
+
+        assert user.role == "customer"
+        assert is_nil(user.username)
+        assert is_nil(user.fullname)
+      end
     end
   end
 
@@ -210,12 +229,12 @@ defmodule CaHeoShop.AccountsTest do
     test "validates password", %{user: user} do
       {:error, changeset} =
         Accounts.update_user_password(user, %{
-          password: "not valid",
+          password: "short7!",
           password_confirmation: "another"
         })
 
       assert %{
-               password: ["should be at least 12 character(s)"],
+               password: ["should be at least 8 character(s)"],
                password_confirmation: ["does not match password"]
              } = errors_on(changeset)
     end
@@ -249,6 +268,301 @@ defmodule CaHeoShop.AccountsTest do
         })
 
       refute Repo.get_by(UserToken, user_id: user.id)
+    end
+  end
+
+  describe "seed user accounts" do
+    test "defines supported roles" do
+      assert User.roles() == ["system", "admin", "customer"]
+    end
+
+    test "allows username-only system users" do
+      {:ok, user} =
+        Accounts.create_seed_user(%{
+          username: "admin_seed",
+          fullname: "System Admin",
+          role: "system",
+          password: "1234qwer"
+        })
+
+      assert user.role == "system"
+      assert user.username == "admin_seed"
+      assert user.email == nil
+      assert user.fullname == "System Admin"
+      assert user.confirmed_at == nil
+      assert user.hashed_password
+    end
+
+    test "allows username-only admin users" do
+      {:ok, user} =
+        Accounts.create_seed_user(%{
+          username: "admin_operator",
+          fullname: "Admin Operator",
+          role: "admin",
+          password: "1234qwer"
+        })
+
+      assert user.role == "admin"
+      assert user.username == "admin_operator"
+      assert user.email == nil
+    end
+
+    test "allows email-based customer users" do
+      {:ok, user} =
+        Accounts.create_seed_user(%{
+          email: unique_user_email(),
+          fullname: "Customer One",
+          role: "customer",
+          password: "1234qwer"
+        })
+
+      assert user.role == "customer"
+      assert user.email
+      assert user.username == nil
+    end
+
+    test "allows users with both email and username" do
+      {:ok, user} =
+        Accounts.create_seed_user(%{
+          email: unique_user_email(),
+          username: "hybrid_user",
+          fullname: "Hybrid User",
+          role: "customer",
+          password: "1234qwer"
+        })
+
+      assert user.email
+      assert user.username == "hybrid_user"
+    end
+
+    test "defaults role to customer in the database" do
+      {:ok, user} =
+        Repo.insert(
+          User.seed_changeset(%User{}, %{
+            email: unique_user_email(),
+            password: "1234qwer"
+          })
+        )
+
+      assert user.role == "customer"
+    end
+
+    test "rejects users without email and username" do
+      {:error, changeset} =
+        Accounts.create_seed_user(%{
+          fullname: "No Login",
+          role: "customer",
+          password: "1234qwer"
+        })
+
+      assert %{email: ["email or username is required"]} = errors_on(changeset)
+    end
+
+    test "accepts all supported roles" do
+      for role <- ["system", "admin", "customer"] do
+        {:ok, user} =
+          Accounts.create_seed_user(%{
+            username: "user_#{role}",
+            role: role,
+            password: "1234qwer"
+          })
+
+        assert user.role == role
+      end
+    end
+
+    test "rejects invalid roles" do
+      {:error, changeset} =
+        Accounts.create_seed_user(%{
+          username: "bad_role_user",
+          role: "superadmin",
+          password: "1234qwer"
+        })
+
+      assert %{role: ["is invalid"]} = errors_on(changeset)
+    end
+
+    test "allows nil usernames" do
+      {:ok, user} =
+        Accounts.create_seed_user(%{
+          email: unique_user_email(),
+          role: "customer",
+          password: "1234qwer"
+        })
+
+      assert user.username == nil
+    end
+
+    test "enforces username uniqueness only when present" do
+      assert {:ok, _user} =
+               Accounts.create_seed_user(%{
+                 username: "seed_unique_user",
+                 role: "admin",
+                 password: "1234qwer"
+               })
+
+      assert {:error, changeset} =
+               Accounts.create_seed_user(%{
+                 username: "seed_unique_user",
+                 role: "system",
+                 password: "1234qwer"
+               })
+
+      assert %{username: ["has already been taken"]} = errors_on(changeset)
+    end
+
+    test "allows multiple users with nil username" do
+      assert {:ok, _user} =
+               Accounts.create_seed_user(%{
+                 email: unique_user_email(),
+                 role: "customer",
+                 password: "1234qwer"
+               })
+
+      assert {:ok, _user} =
+               Accounts.create_seed_user(%{
+                 email: unique_user_email(),
+                 role: "customer",
+                 password: "1234qwer"
+               })
+    end
+
+    test "rejects usernames with spaces" do
+      {:error, changeset} =
+        Accounts.create_seed_user(%{
+          username: "bad user",
+          role: "admin",
+          password: "1234qwer"
+        })
+
+      assert %{username: ["must contain only letters, numbers, and underscore"]} =
+               errors_on(changeset)
+    end
+
+    test "rejects usernames with special characters" do
+      {:error, changeset} =
+        Accounts.create_seed_user(%{
+          username: "bad-user",
+          role: "admin",
+          password: "1234qwer"
+        })
+
+      assert %{username: ["must contain only letters, numbers, and underscore"]} =
+               errors_on(changeset)
+    end
+
+    test "rejects usernames shorter than 3 characters" do
+      {:error, changeset} =
+        Accounts.create_seed_user(%{
+          username: "ab",
+          role: "admin",
+          password: "1234qwer"
+        })
+
+      assert %{username: ["should be at least 3 character(s)"]} = errors_on(changeset)
+    end
+
+    test "rejects usernames longer than 32 characters" do
+      {:error, changeset} =
+        Accounts.create_seed_user(%{
+          username: String.duplicate("a", 33),
+          role: "admin",
+          password: "1234qwer"
+        })
+
+      assert %{username: ["should be at most 32 character(s)"]} = errors_on(changeset)
+    end
+
+    test "allows fullname to be nil" do
+      {:ok, user} =
+        Accounts.create_seed_user(%{
+          username: "fullname_nil_user",
+          role: "admin",
+          password: "1234qwer"
+        })
+
+      assert user.fullname == nil
+    end
+
+    test "allows fullname to be set and reused" do
+      fullname = "Shared Fullname"
+
+      assert {:ok, first_user} =
+               Accounts.create_seed_user(%{
+                 username: "shared_fullname_one",
+                 fullname: fullname,
+                 role: "admin",
+                 password: "1234qwer"
+               })
+
+      assert {:ok, second_user} =
+               Accounts.create_seed_user(%{
+                 username: "shared_fullname_two",
+                 fullname: fullname,
+                 role: "system",
+                 password: "1234qwer"
+               })
+
+      assert first_user.fullname == fullname
+      assert second_user.fullname == fullname
+    end
+
+    test "rejects fullnames longer than 160 characters" do
+      {:error, changeset} =
+        Accounts.create_seed_user(%{
+          username: "long_fullname_user",
+          fullname: String.duplicate("a", 161),
+          role: "admin",
+          password: "1234qwer"
+        })
+
+      assert %{fullname: ["should be at most 160 character(s)"]} = errors_on(changeset)
+    end
+
+    test "upserts seed users idempotently by username" do
+      assert {:ok, first_user} =
+               Accounts.upsert_seed_user(%{
+                 username: "seed_idempotent_admin",
+                 fullname: "Admin One",
+                 role: "admin",
+                 password: "1234qwer"
+               })
+
+      assert {:ok, second_user} =
+               Accounts.upsert_seed_user(%{
+                 username: "seed_idempotent_admin",
+                 fullname: "Admin One Updated",
+                 role: "admin",
+                 password: "1234qwer"
+               })
+
+      assert first_user.id == second_user.id
+      assert second_user.fullname == "Admin One Updated"
+      assert Repo.aggregate(User, :count, :id) == 1
+    end
+
+    test "upserts seed users idempotently by email" do
+      email = unique_user_email()
+
+      assert {:ok, first_user} =
+               Accounts.upsert_seed_user(%{
+                 email: email,
+                 fullname: "Customer One",
+                 role: "customer",
+                 password: "1234qwer"
+               })
+
+      assert {:ok, second_user} =
+               Accounts.upsert_seed_user(%{
+                 email: email,
+                 fullname: "Customer One Updated",
+                 role: "customer",
+                 password: "1234qwer"
+               })
+
+      assert first_user.id == second_user.id
+      assert second_user.fullname == "Customer One Updated"
+      assert Repo.aggregate(User, :count, :id) == 1
     end
   end
 

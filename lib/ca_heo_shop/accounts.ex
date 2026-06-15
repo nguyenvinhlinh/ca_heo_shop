@@ -76,8 +76,34 @@ defmodule CaHeoShop.Accounts do
   """
   def register_user(attrs) do
     %User{}
-    |> User.email_changeset(attrs)
+    |> User.registration_changeset(attrs)
     |> Repo.insert()
+  end
+
+  def create_seed_user(attrs) do
+    %User{}
+    |> User.seed_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def upsert_seed_user(attrs) do
+    attrs = Enum.into(attrs, %{})
+
+    user =
+      cond do
+        attrs[:email] ->
+          Repo.get_by(User, email: attrs[:email])
+
+        attrs[:username] ->
+          Repo.get_by(User, username: attrs[:username])
+
+        true ->
+          nil
+      end
+
+    (user || %User{})
+    |> User.seed_changeset(attrs)
+    |> Repo.insert_or_update()
   end
 
   ## Settings
