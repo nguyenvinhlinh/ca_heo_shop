@@ -16,7 +16,7 @@
 
 [DONE] ✅ [14/06/2026 17:34] 039-15_admin_delete_product_image.md
 
-[BACKLOG] 📜 040_extract_product_live_tests_from_admin_live_test.md
+[DONE] ✅ [15/06/2026 08:33] 040_extract_product_live_tests_from_admin_live_test.md
 
 [Backlog] 033_update-users-with-role-fullname.md
 
