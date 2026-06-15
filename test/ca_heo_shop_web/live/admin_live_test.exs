@@ -94,8 +94,192 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "No variants"
     assert html =~ "Showing products 1-2 of 2"
     assert html =~ "/admin/products/#{product.id}"
+    assert html =~ ~s(id="delete-product-#{product.id}")
+    assert html =~ ~s(phx-click="delete-product")
+    assert html =~ ~s(phx-value-id="#{product.id}")
+    assert html =~ ~s(data-confirm="Delete this product and all related variants and images?")
     refute html =~ "Export mock CSV"
     refute html =~ "Bulk action"
+  end
+
+  test "deletes a product from the index and updates the summary", %{conn: conn} do
+    removed_product =
+      product_fixture(
+        collection_id: nil,
+        slug: "removed-product",
+        name_vi: "Removed product",
+        name_en: "Removed product"
+      )
+
+    kept_product =
+      product_fixture(
+        collection_id: nil,
+        slug: "kept-product",
+        name_vi: "Kept product",
+        name_en: "Kept product"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products")
+
+    html =
+      view
+      |> render_click("delete-product", %{"id" => Integer.to_string(removed_product.id)})
+
+    assert html =~ "Product deleted successfully."
+    refute html =~ "Removed product"
+    assert html =~ "Kept product"
+    assert html =~ "Showing products 1-1 of 1"
+
+    assert_raise Ecto.NoResultsError, fn ->
+      CaHeoShop.Products.get_product!(removed_product.id)
+    end
+
+    assert CaHeoShop.Products.get_product!(kept_product.id).id == kept_product.id
+  end
+
+  test "deletes a product with related variants and images from the index", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "delete-with-deps",
+        name_vi: "Delete with deps",
+        name_en: "Delete with deps"
+      )
+
+    variant = product_variant_fixture(product, variant_name_vi: "PLA", variant_name_en: "PLA")
+    upload_path = write_temp_upload!("delete-index-product.jpg", "jpg-data")
+
+    assert {:ok, product_image} =
+             CaHeoShop.Products.add_product_image_upload(product, %{
+               path: upload_path,
+               client_name: "delete-index-product.jpg"
+             })
+
+    {:ok, stored_path} = Uploads.product_image_path(product_image.filename)
+
+    {:ok, thumbnail_path} =
+      Uploads.product_image_path(Uploads.thumbnail_filename(product_image.filename))
+
+    File.write!(thumbnail_path, "thumb-data")
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products")
+
+    html =
+      view
+      |> render_click("delete-product", %{"id" => Integer.to_string(product.id)})
+
+    assert html =~ "Product deleted successfully."
+    refute html =~ "Delete with deps"
+    refute File.exists?(stored_path)
+    refute File.exists?(thumbnail_path)
+
+    assert_raise Ecto.NoResultsError, fn ->
+      CaHeoShop.Products.get_product_variant!(variant.id)
+    end
+
+    assert_raise Ecto.NoResultsError, fn ->
+      CaHeoShop.Products.get_product_image!(product_image.id)
+    end
+  end
+
+  test "deleting the last product on a page adjusts to the previous valid page", %{conn: conn} do
+    for index <- 1..21 do
+      product_fixture(
+        collection_id: nil,
+        slug: "delete-paged-product-#{index}",
+        name_vi: "Delete paged #{index}",
+        name_en: "Delete paged #{index}"
+      )
+    end
+
+    last_product =
+      CaHeoShop.Products.list_admin_products(%{"page" => 2, "per_page" => 20}).entries
+      |> List.first()
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products?page=2&per_page=20")
+
+    render_click(view, "delete-product", %{"id" => Integer.to_string(last_product.id)})
+
+    assert_patch(view, ~p"/admin/products?collection=ALL&page=1&per_page=20&q=")
+
+    html = render(view)
+    assert html =~ "Product deleted successfully."
+    assert html =~ "Showing products 1-20 of 20"
+  end
+
+  test "deleting the only product shows the empty state", %{conn: conn} do
+    product =
+      product_fixture(
+        collection_id: nil,
+        slug: "only-product",
+        name_vi: "Only product",
+        name_en: "Only product"
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/admin/products")
+
+    html =
+      view
+      |> render_click("delete-product", %{"id" => Integer.to_string(product.id)})
+
+    assert html =~ "Product deleted successfully."
+    assert html =~ "No products found."
+    assert html =~ "Showing products 0-0 of 0"
+  end
+
+  test "deleting a product preserves active filters", %{conn: conn} do
+    collection = collection_fixture(name_vi: "Delete filter", nav_display_order: 0)
+
+    removed_product =
+      product_fixture(
+        collection: collection,
+        slug: "filter-phone-removed",
+        name_vi: "Filter removed",
+        name_en: "Phone removed"
+      )
+
+    kept_product =
+      product_fixture(
+        collection: collection,
+        slug: "filter-phone-kept",
+        name_vi: "Filter kept",
+        name_en: "Phone kept"
+      )
+
+    _other_product =
+      product_fixture(
+        collection_id: nil,
+        slug: "outside-filter",
+        name_vi: "Outside filter",
+        name_en: "Cable box"
+      )
+
+    {:ok, view, _html} =
+      live(conn, ~p"/admin/products?collection=#{collection.id}&page=1&per_page=20&q=phone")
+
+    html =
+      view
+      |> render_click("delete-product", %{"id" => Integer.to_string(removed_product.id)})
+
+    assert html =~ "Product deleted successfully."
+    assert html =~ kept_product.name_en
+    refute html =~ "Outside filter"
+
+    search_html = view |> element("#admin-products-search-form") |> render()
+    filter_html = view |> element("#admin-products-collection-filter") |> render()
+
+    assert search_html =~ ~s(value="phone")
+    assert filter_html =~ ~s(option value="#{collection.id}" selected="")
+  end
+
+  test "deleting a missing product from the index shows an error", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/admin/products")
+
+    html =
+      view
+      |> render_click("delete-product", %{"id" => "999999"})
+
+    assert html =~ "Product not found."
   end
 
   test "renders new product page", %{conn: conn} do

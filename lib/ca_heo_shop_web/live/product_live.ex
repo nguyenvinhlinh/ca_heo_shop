@@ -84,6 +84,23 @@ defmodule CaHeoShopWeb.ProductLive do
      )}
   end
 
+  def handle_event("delete-product", %{"id" => id}, socket) do
+    with {product_id, ""} <- Integer.parse(id),
+         %Product{} = product <- Products.get_product(product_id),
+         {:ok, _deleted_product} <- Products.delete_product_with_dependencies(product) do
+      {:noreply, refresh_product_index_after_delete(socket)}
+    else
+      :error ->
+        {:noreply, put_flash(socket, :error, "Product not found.")}
+
+      nil ->
+        {:noreply, put_flash(socket, :error, "Product not found.")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Could not delete product.")}
+    end
+  end
+
   def handle_event("validate_product", %{"product" => params}, socket) do
     changeset =
       socket.assigns.selected_product
@@ -616,11 +633,33 @@ defmodule CaHeoShopWeb.ProductLive do
                   </ul>
                 </td>
                 <td class="text-right">
-                  <AdminLive.row_actions
-                    view={~p"/admin/products/#{product.id}"}
-                    edit={~p"/admin/products/#{product.slug}/edit"}
-                    delete={~p"/admin/products/#{product.slug}/delete"}
-                  />
+                  <div class="join">
+                    <.link
+                      navigate={~p"/admin/products/#{product.id}"}
+                      class="btn btn-square btn-ghost btn-sm join-item"
+                      aria-label="View"
+                    >
+                      <.icon name="hero-eye" class="size-4" />
+                    </.link>
+                    <.link
+                      navigate={~p"/admin/products/#{product.slug}/edit"}
+                      class="btn btn-square btn-ghost btn-sm join-item"
+                      aria-label="Edit"
+                    >
+                      <.icon name="hero-pencil-square" class="size-4" />
+                    </.link>
+                    <button
+                      id={"delete-product-#{product.id}"}
+                      type="button"
+                      class="btn btn-square btn-error btn-outline btn-sm join-item border-transparent"
+                      aria-label="Delete"
+                      phx-click="delete-product"
+                      phx-value-id={product.id}
+                      data-confirm="Delete this product and all related variants and images?"
+                    >
+                      <.icon name="hero-trash" class="size-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -1441,6 +1480,10 @@ defmodule CaHeoShopWeb.ProductLive do
   defp assign_product_index(socket, params) do
     product_index = Products.list_admin_products(params)
 
+    assign_product_index_page(socket, product_index)
+  end
+
+  defp assign_product_index_page(socket, product_index) do
     socket
     |> assign(:page_title, "Products")
     |> assign(:products, product_index.entries)
@@ -1497,6 +1540,20 @@ defmodule CaHeoShopWeb.ProductLive do
     |> assign(:variant_dialog_action, :new)
     |> assign(:selected_product_variant, nil)
     |> assign(:product_form_collection_options, product_form_collection_options())
+  end
+
+  defp refresh_product_index_after_delete(socket) do
+    product_index = Products.list_admin_products(socket.assigns.product_filters)
+    socket = put_flash(socket, :info, "Product deleted successfully.")
+
+    if product_index.page != socket.assigns.page do
+      push_patch(socket,
+        to:
+          ~p"/admin/products?#{%{"collection" => product_index.collection, "page" => product_index.page, "per_page" => product_index.per_page, "q" => product_index.q}}"
+      )
+    else
+      assign_product_index_page(socket, product_index)
+    end
   end
 
   defp product_collection_options do

@@ -5,6 +5,7 @@ defmodule CaHeoShop.ProductsTest do
   alias CaHeoShop.Products.Product
   alias CaHeoShop.Products.ProductImage
   alias CaHeoShop.Products.ProductVariant
+  alias CaHeoShop.Repo
   alias CaHeoShop.Uploads
 
   import CaHeoShop.CollectionsFixtures
@@ -864,6 +865,94 @@ defmodule CaHeoShop.ProductsTest do
       assert {:ok, %Product{}} = Products.delete_product(product)
 
       refute File.exists?(stored_path)
+    end
+
+    test "delete_product_with_dependencies/1 deletes related variants and images but preserves other products" do
+      product = product_fixture()
+      other_product = product_fixture(slug: "other-product", collection_id: nil)
+      removed_variant = product_variant_fixture(product)
+
+      kept_variant =
+        product_variant_fixture(other_product, variant_name_vi: "Khac", variant_name_en: "Other")
+
+      removed_image = product_image_fixture(product, filename: "remove.jpg")
+      kept_image = product_image_fixture(other_product, filename: "keep.jpg")
+
+      assert {:ok, %Product{}} = Products.delete_product_with_dependencies(product)
+
+      assert_raise Ecto.NoResultsError, fn -> Products.get_product!(product.id) end
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Products.get_product_variant!(removed_variant.id)
+      end
+
+      assert_raise Ecto.NoResultsError, fn -> Products.get_product_image!(removed_image.id) end
+      assert Products.get_product!(other_product.id).id == other_product.id
+      assert Products.get_product_variant!(kept_variant.id).id == kept_variant.id
+      assert Products.get_product_image!(kept_image.id).id == kept_image.id
+    end
+
+    test "delete_product_with_dependencies/1 removes original and thumbnail files" do
+      product = product_fixture()
+      upload_path = write_temp_upload!("delete-product-with-deps.jpg", "jpg-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "delete-product-with-deps.jpg"
+               })
+
+      assert {:ok, stored_path} = Uploads.product_image_path(product_image.filename)
+
+      assert {:ok, thumbnail_path} =
+               Uploads.product_image_path(Uploads.thumbnail_filename(product_image.filename))
+
+      File.write!(thumbnail_path, "thumb-data")
+
+      assert {:ok, %Product{}} = Products.delete_product_with_dependencies(product)
+
+      refute File.exists?(stored_path)
+      refute File.exists?(thumbnail_path)
+    end
+
+    test "delete_product_with_dependencies/1 succeeds when managed files are already missing" do
+      product = product_fixture()
+      upload_path = write_temp_upload!("delete-product-missing.jpg", "jpg-data")
+
+      assert {:ok, product_image} =
+               Products.add_product_image_upload(product, %{
+                 path: upload_path,
+                 client_name: "delete-product-missing.jpg"
+               })
+
+      assert {:ok, stored_path} = Uploads.product_image_path(product_image.filename)
+
+      assert {:ok, thumbnail_path} =
+               Uploads.product_image_path(Uploads.thumbnail_filename(product_image.filename))
+
+      File.rm!(stored_path)
+      File.rm(thumbnail_path)
+
+      assert {:ok, %Product{}} = Products.delete_product_with_dependencies(product)
+      assert_raise Ecto.NoResultsError, fn -> Products.get_product!(product.id) end
+    end
+
+    test "delete_product_with_dependencies/1 rejects unsafe filenames" do
+      product = product_fixture()
+
+      unsafe_image =
+        %ProductImage{}
+        |> ProductImage.changeset(%{
+          product_id: product.id,
+          filename: "../outside.jpg",
+          display_order: 0,
+          has_thumbnail: false
+        })
+        |> Repo.insert!()
+
+      assert {:error, :invalid_filename} = Products.delete_product_with_dependencies(product)
+      assert Products.get_product!(product.id).id == product.id
+      assert Products.get_product_image!(unsafe_image.id).id == unsafe_image.id
     end
   end
 

@@ -18,6 +18,8 @@
 
 [DONE] ✅ [15/06/2026 08:33] 040_extract_product_live_tests_from_admin_live_test.md
 
+[DONE] ✅ [15/06/2026 08:42] 039-16_admin_delete_product_from_index.md
+
 [Backlog] 033_update-users-with-role-fullname.md
 
 [backlog] 034_allow-login-w-username-and-email.md

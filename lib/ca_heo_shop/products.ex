@@ -22,6 +22,8 @@ defmodule CaHeoShop.Products do
     Repo.all(Product)
   end
 
+  def get_product(id), do: Repo.get(Product, id)
+
   def list_admin_products(params \\ %{}) do
     params = normalize_admin_product_params(params)
 
@@ -334,16 +336,26 @@ defmodule CaHeoShop.Products do
     update_product_image(product_image, %{has_thumbnail: false})
   end
 
-  def delete_product(%Product{} = product) do
-    image_filenames = product_image_filenames(product.id)
+  def delete_product(%Product{} = product), do: delete_product_with_dependencies(product)
 
-    case Repo.delete(product) do
-      {:ok, deleted_product} ->
-        Enum.each(image_filenames, &maybe_delete_product_image_assets/1)
-        {:ok, deleted_product}
+  def delete_product_with_dependencies(%Product{} = product) do
+    product = Repo.preload(product, [:product_images, :product_variants])
 
-      {:error, %Ecto.Changeset{} = changeset} ->
+    with :ok <- validate_product_image_filenames(product.product_images),
+         :ok <- delete_product_image_assets(product.product_images),
+         {:ok, %{product: deleted_product}} <- delete_product_dependencies_transaction(product) do
+      {:ok, deleted_product}
+    else
+      {:error, :product, %Ecto.Changeset{} = changeset, _changes_so_far} ->
+        Logger.error("failed to delete product #{product.id}: #{inspect(changeset.errors)}")
         {:error, changeset}
+
+      {:error, step, reason, _changes_so_far} ->
+        Logger.error("failed to delete product #{product.id} at #{step}: #{inspect(reason)}")
+        {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -569,13 +581,6 @@ defmodule CaHeoShop.Products do
     }
   end
 
-  defp product_image_filenames(product_id) do
-    ProductImage
-    |> where([image], image.product_id == ^product_id)
-    |> select([image], image.filename)
-    |> Repo.all()
-  end
-
   defp maybe_delete_product_image_assets(nil), do: :ok
 
   defp maybe_delete_product_image_assets(image_filename) do
@@ -590,6 +595,50 @@ defmodule CaHeoShop.Products do
 
         :ok
     end
+  end
+
+  defp validate_product_image_filenames(product_images) do
+    Enum.reduce_while(product_images, :ok, fn product_image, :ok ->
+      case validate_product_image_filename(product_image.filename) do
+        :ok -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp validate_product_image_filename(nil), do: :ok
+
+  defp validate_product_image_filename(image_filename) when is_binary(image_filename) do
+    if Uploads.static_asset_path?(image_filename) do
+      :ok
+    else
+      case Uploads.product_image_path(image_filename) do
+        {:ok, _path} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  defp delete_product_image_assets(product_images) do
+    Enum.each(product_images, fn product_image ->
+      maybe_delete_product_image_assets(product_image.filename)
+    end)
+
+    :ok
+  end
+
+  defp delete_product_dependencies_transaction(%Product{} = product) do
+    Multi.new()
+    |> Multi.delete_all(
+      :product_images,
+      from(image in ProductImage, where: image.product_id == ^product.id)
+    )
+    |> Multi.delete_all(
+      :product_variants,
+      from(variant in ProductVariant, where: variant.product_id == ^product.id)
+    )
+    |> Multi.delete(:product, product)
+    |> Repo.transaction()
   end
 
   defp store_product_image_uploads(_product_id, []), do: {:ok, []}
