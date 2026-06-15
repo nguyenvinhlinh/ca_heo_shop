@@ -363,13 +363,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert redirected_html =~ "Product created successfully."
   end
 
-  test "renders product edit and delete placeholders", %{conn: conn} do
-    {:ok, _edit, edit_html} = live(conn, ~p"/admin/products/modular-desk-organizer/edit")
-
-    assert edit_html =~ "Edit Product"
-    assert edit_html =~ "Modular Desk Organizer"
-    assert edit_html =~ "Save Changes"
-
+  test "renders product delete placeholder", %{conn: conn} do
     {:ok, _delete, delete_html} = live(conn, ~p"/admin/products/modular-desk-organizer/delete")
 
     assert delete_html =~ "Are you sure you want to delete this product?"

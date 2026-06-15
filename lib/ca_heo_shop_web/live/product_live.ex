@@ -641,13 +641,6 @@ defmodule CaHeoShopWeb.ProductLive do
                     >
                       <.icon name="hero-eye" class="size-4" />
                     </.link>
-                    <.link
-                      navigate={~p"/admin/products/#{product.slug}/edit"}
-                      class="btn btn-square btn-ghost btn-sm join-item"
-                      aria-label="Edit"
-                    >
-                      <.icon name="hero-pencil-square" class="size-4" />
-                    </.link>
                     <button
                       id={"delete-product-#{product.id}"}
                       type="button"

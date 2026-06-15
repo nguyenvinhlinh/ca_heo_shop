@@ -45,12 +45,6 @@ defmodule CaHeoShopWeb.AdminLive do
               collections={@collections}
               mode={:new}
             />
-          <% :product_edit -> %>
-            <.product_form_page
-              product={@selected_product}
-              collections={@collections}
-              mode={:edit}
-            />
           <% :product_delete -> %>
             <.delete_confirmation_page resource={@selected_product} resource_type={:product} />
           <% :orders -> %>
@@ -491,11 +485,8 @@ defmodule CaHeoShopWeb.AdminLive do
   def product_form_page(assigns) do
     assigns =
       assigns
-      |> assign(:title, if(assigns.mode == :new, do: "Create Product", else: "Edit Product"))
-      |> assign(
-        :primary_action,
-        if(assigns.mode == :new, do: "Create Product", else: "Save Changes")
-      )
+      |> assign(:title, "Create Product")
+      |> assign(:primary_action, "Create Product")
 
     ~H"""
     <.page_header
@@ -816,14 +807,13 @@ defmodule CaHeoShopWeb.AdminLive do
   defp page_title(:dashboard), do: "Admin Dashboard"
   defp page_title(:products), do: "Admin Products"
   defp page_title(:product_new), do: "Create Product"
-  defp page_title(:product_edit), do: "Edit Product"
   defp page_title(:product_delete), do: "Delete Product"
   defp page_title(:orders), do: "Admin Orders"
   defp page_title(:customers), do: "Admin Customers"
   defp page_title(:settings), do: "Admin Settings"
 
   defp product_action?(action),
-    do: action in [:products, :product_new, :product_edit, :product_delete]
+    do: action in [:products, :product_new, :product_delete]
 
   defp collection_action?(action),
     do: action in [:collections, :collection_new, :collection_edit]

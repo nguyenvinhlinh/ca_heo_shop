@@ -1,30 +1,34 @@
-[DONE] ✅ [13/06/2026 20:51] 039-06_admin_create_product_variant_dialog.md
-
-[DONE] ✅ [13/06/2026 21:00] 039-07_admin_edit_product_variant_dialog.md
-
-[DONE] ✅ [13/06/2026 21:09] 039-08_admin_delete_product_variant.md
-
-[DONE] ✅ [13/06/2026 21:14] 039-09_admin_product_variant_drag_drop_ordering.md
-
-[DONE] ✅ [13/06/2026 21:30] 039-10_admin_edit_product_summary_dialog.md
-
-[DONE] ✅ [14/06/2026 10:17] 039-11_admin_edit_product_content_dialog.md
-
-[DONE] ✅ [14/06/2026 16:25] 039-12_admin_upload_product_image.md
-
-[DONE] ✅ [14/06/2026 16:59] 039-14_apply_thumbnail_generator_to_product_images.md
-
-[DONE] ✅ [14/06/2026 17:34] 039-15_admin_delete_product_image.md
-
-[DONE] ✅ [15/06/2026 08:33] 040_extract_product_live_tests_from_admin_live_test.md
-
-[DONE] ✅ [15/06/2026 08:42] 039-16_admin_delete_product_from_index.md
+[todo] 041_move_admin_liveview_to_admin_namespace.md
 
 [Backlog] 033_update-users-with-role-fullname.md
 
 [backlog] 034_allow-login-w-username-and-email.md
 
 [backlog] 035_add-role-based-route-authorization.md
+
+[DONE] ✅ [15/06/2026 08:42] 039-16_admin_delete_product_from_index.md
+
+[DONE] ✅ [15/06/2026 08:33] 040_extract_product_live_tests_from_admin_live_test.md
+
+[DONE] ✅ [14/06/2026 17:34] 039-15_admin_delete_product_image.md
+
+[DONE] ✅ [14/06/2026 16:59] 039-14_apply_thumbnail_generator_to_product_images.md
+
+[DONE] ✅ [14/06/2026 16:25] 039-12_admin_upload_product_image.md
+
+[DONE] ✅ [14/06/2026 10:17] 039-11_admin_edit_product_content_dialog.md
+
+[DONE] ✅ [13/06/2026 21:30] 039-10_admin_edit_product_summary_dialog.md
+
+[DONE] ✅ [13/06/2026 21:14] 039-09_admin_product_variant_drag_drop_ordering.md
+
+[DONE] ✅ [13/06/2026 21:09] 039-08_admin_delete_product_variant.md
+
+[DONE] ✅ [13/06/2026 21:09] 039-08_admin_delete_product_variant.md
+
+[DONE] ✅ [13/06/2026 21:00] 039-07_admin_edit_product_variant_dialog.md
+
+[DONE] ✅ [13/06/2026 20:51] 039-06_admin_create_product_variant_dialog.md
 
 [DONE] ✅ [13/06/2026 20:41] 039-05_admin_product_image_drag_drop_ordering.md
 
