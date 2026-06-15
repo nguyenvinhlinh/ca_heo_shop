@@ -25,7 +25,7 @@ Product image preview/select/reorder
 These behaviors belong to:
 
 ```text
-CaHeoShopWeb.ProductLive
+CaHeoShopWeb.Admin.ProductLive
 ```
 
 but many of the tests currently live in:
@@ -69,7 +69,7 @@ Likely files:
 
 ```text
 test/ca_heo_shop_web/live/admin_live_test.exs
-test/ca_heo_shop_web/live/product_live_test.exs
+test/ca_heo_shop_web/live/admin/product_live_test.exs
 ```
 
 If the project prefers an admin namespace path, this is also acceptable:
@@ -139,6 +139,6 @@ Recommended verification:
 
 ```text
 mix test test/ca_heo_shop_web/live/admin_live_test.exs
-mix test test/ca_heo_shop_web/live/product_live_test.exs
+mix test test/ca_heo_shop_web/live/admin/product_live_test.exs
 mix test
 ```

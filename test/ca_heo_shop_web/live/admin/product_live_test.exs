@@ -1,4 +1,4 @@
-defmodule CaHeoShopWeb.ProductLiveTest do
+defmodule CaHeoShopWeb.Admin.ProductLiveTest do
   use CaHeoShopWeb.ConnCase
 
   alias CaHeoShop.Uploads

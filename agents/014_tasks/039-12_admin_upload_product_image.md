@@ -91,9 +91,9 @@ Likely files:
 ```text
 lib/ca_heo_shop/products.ex
 lib/ca_heo_shop/products/product_image.ex
-lib/ca_heo_shop_web/live/product_live.ex
+lib/ca_heo_shop_web/live/admin/product_live.ex
 test/ca_heo_shop/products_test.exs
-test/ca_heo_shop_web/live/product_live_test.exs
+test/ca_heo_shop_web/live/admin/product_live_test.exs
 ```
 
 Actual file names may differ depending on the current project structure.
@@ -262,6 +262,6 @@ Recommended verification:
 
 ```text
 mix test test/ca_heo_shop/products_test.exs
-mix test test/ca_heo_shop_web/live/product_live_test.exs
+mix test test/ca_heo_shop_web/live/admin/product_live_test.exs
 mix test
 ```

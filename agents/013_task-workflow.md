@@ -1,4 +1,4 @@
-[todo] 041_move_admin_liveview_to_admin_namespace.md
+[DONE] ✅ [15/06/2026 09:08] 041_move_admin_liveview_to_admin_namespace.md
 
 [Backlog] 033_update-users-with-role-fullname.md
 

@@ -1,4 +1,4 @@
-defmodule CaHeoShopWeb.CollectionLive do
+defmodule CaHeoShopWeb.Admin.CollectionLive do
   use CaHeoShopWeb, :live_view
 
   alias CaHeoShop.Collections
