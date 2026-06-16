@@ -126,6 +126,16 @@ defmodule CaHeoShop.AccountsTest do
                valid_user_password()
              )
     end
+
+    test "allows a customer to log in again after being re-enabled" do
+      user = customer_user_fixture(%{is_customer_enabled: false}) |> set_password()
+      refute Accounts.get_user_by_login_and_password(user.email, valid_user_password())
+
+      assert {:ok, enabled_user} = Accounts.toggle_customer_enabled(user.id)
+      assert enabled_user.is_customer_enabled
+
+      assert Accounts.get_user_by_login_and_password(user.email, valid_user_password())
+    end
   end
 
   describe "list_customers/1" do
@@ -238,6 +248,40 @@ defmodule CaHeoShop.AccountsTest do
 
       assert {:error, :not_found} =
                Accounts.update_customer_profile(system_user.id, %{"fullname" => "Changed System"})
+    end
+  end
+
+  describe "toggle_customer_enabled/1" do
+    test "disables an enabled customer" do
+      customer = customer_user_fixture(%{is_customer_enabled: true})
+
+      assert {:ok, updated_customer} = Accounts.toggle_customer_enabled(customer.id)
+      refute updated_customer.is_customer_enabled
+      refute Accounts.get_user!(customer.id).is_customer_enabled
+    end
+
+    test "enables a disabled customer" do
+      customer = customer_user_fixture(%{is_customer_enabled: false})
+
+      assert {:ok, updated_customer} = Accounts.toggle_customer_enabled(customer.id)
+      assert updated_customer.is_customer_enabled
+      assert Accounts.get_user!(customer.id).is_customer_enabled
+    end
+
+    test "rejects admin users" do
+      admin_user = admin_user_fixture()
+
+      assert {:error, :not_found} = Accounts.toggle_customer_enabled(admin_user.id)
+    end
+
+    test "rejects system users" do
+      system_user = system_user_fixture()
+
+      assert {:error, :not_found} = Accounts.toggle_customer_enabled(system_user.id)
+    end
+
+    test "returns error for missing user" do
+      assert {:error, :not_found} = Accounts.toggle_customer_enabled(-1)
     end
   end
 

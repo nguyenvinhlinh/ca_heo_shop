@@ -49,6 +49,22 @@ defmodule CaHeoShopWeb.Admin.CustomerLive do
      )}
   end
 
+  def handle_event("toggle_customer_enabled", %{"id" => id}, socket) do
+    case Accounts.toggle_customer_enabled(id) do
+      {:ok, customer} ->
+        {:noreply,
+         socket
+         |> assign_customer_index(socket.assigns.customer_filters)
+         |> put_flash(:info, toggle_customer_success_message(customer))}
+
+      {:error, :not_found} ->
+        {:noreply, put_flash(socket, :error, "Could not update customer status.")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Could not update customer status.")}
+    end
+  end
+
   def handle_event("edit_customer", %{"id" => id}, socket) do
     case Accounts.get_customer(id) do
       %User{} = customer ->
@@ -201,14 +217,19 @@ defmodule CaHeoShopWeb.Admin.CustomerLive do
                     <td class="min-w-56">{display_email(customer)}</td>
                     <td>{display_phone_number(customer)}</td>
                     <td>
-                      <span class={["badge", customer_enabled_badge_class(customer)]}>
-                        {customer_enabled_label(customer)}
-                      </span>
+                      <input
+                        type="checkbox"
+                        class="toggle toggle-success"
+                        phx-click="toggle_customer_enabled"
+                        phx-value-id={customer.id}
+                        aria-label={customer_toggle_button_label(customer)}
+                        checked={customer.is_customer_enabled}
+                      />
                     </td>
                     <td>{format_datetime(customer.inserted_at)}</td>
                     <td class="text-right">
                       <div class="flex justify-end gap-2">
-                        <button type="button" class="btn btn-ghost btn-sm" aria-label="View order">
+                        <button type="button" class="btn btn-sm btn-secondary" aria-label="View order">
                           View order
                         </button>
                         <button
@@ -219,13 +240,6 @@ defmodule CaHeoShopWeb.Admin.CustomerLive do
                           aria-label="Edit customer"
                         >
                           <span class="hero-pencil-square size-4"></span>
-                        </button>
-                        <button
-                          type="button"
-                          class={["btn btn-sm", customer_toggle_button_class(customer)]}
-                          aria-label={customer_toggle_button_label(customer)}
-                        >
-                          {customer_toggle_button_label(customer)}
                         </button>
                       </div>
                     </td>
@@ -395,17 +409,13 @@ defmodule CaHeoShopWeb.Admin.CustomerLive do
   defp display_customer_identity(%{email: email}) when is_binary(email) and email != "", do: email
   defp display_customer_identity(_customer), do: "customer"
 
-  defp customer_enabled_label(%{is_customer_enabled: true}), do: "Enabled"
-  defp customer_enabled_label(_customer), do: "Disabled"
-
-  defp customer_enabled_badge_class(%{is_customer_enabled: true}), do: "badge-success"
-  defp customer_enabled_badge_class(_customer), do: "badge-error"
-
   defp customer_toggle_button_label(%{is_customer_enabled: true}), do: "Disable"
   defp customer_toggle_button_label(_customer), do: "Enable"
 
-  defp customer_toggle_button_class(%{is_customer_enabled: true}), do: "btn-error btn-outline"
-  defp customer_toggle_button_class(_customer), do: "btn-success btn-outline"
+  defp toggle_customer_success_message(%{is_customer_enabled: true}),
+    do: "Customer enabled successfully."
+
+  defp toggle_customer_success_message(_customer), do: "Customer disabled successfully."
 
   defp customer_summary(_from, _to, 0), do: "Showing 0 customers"
 

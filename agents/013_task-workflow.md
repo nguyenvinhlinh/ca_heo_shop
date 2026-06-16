@@ -2,7 +2,7 @@
 
 [DONE] ✅ [16/06/2026 04:35] 042-01_admin-edit-customer-info.md
 
-[backlog] 042-02_admin-toggle-enabled-customer.md
+[DONE] ✅ [16/06/2026 09:53] 042-02_admin-toggle-enabled-customer.md
 
 
 

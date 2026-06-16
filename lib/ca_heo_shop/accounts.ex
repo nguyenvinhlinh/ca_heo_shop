@@ -121,6 +121,18 @@ defmodule CaHeoShop.Accounts do
     end
   end
 
+  def toggle_customer_enabled(customer_id) do
+    case get_customer(customer_id) do
+      %User{} = customer ->
+        customer
+        |> Ecto.Changeset.change(is_customer_enabled: !customer.is_customer_enabled)
+        |> Repo.update()
+
+      nil ->
+        {:error, :not_found}
+    end
+  end
+
   @doc """
   Gets a single user.
 

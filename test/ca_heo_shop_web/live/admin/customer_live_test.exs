@@ -33,18 +33,15 @@ defmodule CaHeoShopWeb.Admin.CustomerLiveTest do
     _admin = admin_user_fixture(%{fullname: "Admin User", email: nil})
     _system = system_user_fixture(%{fullname: "System User", email: nil})
 
-    {:ok, _view, html} = live(conn, ~p"/admin/customers")
+    {:ok, view, html} = live(conn, ~p"/admin/customers")
 
     assert html =~ "Enabled Customer"
     assert html =~ "Disabled Customer"
     assert html =~ "enabled@example.com"
     assert html =~ "090 111 2222"
-    assert html =~ "Enabled"
-    assert html =~ "Disabled"
     assert html =~ "View order"
     assert html =~ "hero-pencil-square size-4"
-    assert html =~ "Disable"
-    assert html =~ "Enable"
+    assert html =~ "toggle toggle-success"
     refute html =~ "Admin User"
     refute html =~ "System User"
     refute html =~ ">Show<"
@@ -52,6 +49,64 @@ defmodule CaHeoShopWeb.Admin.CustomerLiveTest do
 
     assert html =~ ~s(id="customer-#{enabled_customer.id}")
     assert html =~ ~s(id="customer-#{disabled_customer.id}")
+    assert has_element?(view, "#customer-#{enabled_customer.id} input.toggle[checked]")
+    assert has_element?(view, "#customer-#{disabled_customer.id} input.toggle:not([checked])")
+  end
+
+  test "toggles customer enabled state from the index", %{conn: conn} do
+    customer = customer_user_fixture(%{fullname: "Toggle Customer", is_customer_enabled: true})
+
+    {:ok, view, _html} = live(conn, ~p"/admin/customers")
+
+    render_click(view, "toggle_customer_enabled", %{"id" => Integer.to_string(customer.id)})
+
+    html = render(view)
+    assert html =~ "Customer disabled successfully."
+    assert has_element?(view, "#customer-#{customer.id} input.toggle:not([checked])")
+
+    reloaded_customer = CaHeoShop.Accounts.get_user!(customer.id)
+    refute reloaded_customer.is_customer_enabled
+
+    render_click(view, "toggle_customer_enabled", %{"id" => Integer.to_string(customer.id)})
+
+    html = render(view)
+    assert html =~ "Customer enabled successfully."
+    assert has_element?(view, "#customer-#{customer.id} input.toggle[checked]")
+
+    reloaded_customer = CaHeoShop.Accounts.get_user!(customer.id)
+    assert reloaded_customer.is_customer_enabled
+  end
+
+  test "refreshes enabled filter after disabling a customer", %{conn: conn} do
+    customer =
+      customer_user_fixture(%{fullname: "Enabled Filter Toggle", is_customer_enabled: true})
+
+    {:ok, view, _html} = live(conn, ~p"/admin/customers?enabled=true")
+
+    assert render(view) =~ "Enabled Filter Toggle"
+
+    render_click(view, "toggle_customer_enabled", %{"id" => Integer.to_string(customer.id)})
+
+    html = render(view)
+    assert html =~ "Customer disabled successfully."
+    refute html =~ "Enabled Filter Toggle"
+    assert html =~ "Showing 0 customers"
+  end
+
+  test "refreshes disabled filter after enabling a customer", %{conn: conn} do
+    customer =
+      customer_user_fixture(%{fullname: "Disabled Filter Toggle", is_customer_enabled: false})
+
+    {:ok, view, _html} = live(conn, ~p"/admin/customers?enabled=false")
+
+    assert render(view) =~ "Disabled Filter Toggle"
+
+    render_click(view, "toggle_customer_enabled", %{"id" => Integer.to_string(customer.id)})
+
+    html = render(view)
+    assert html =~ "Customer enabled successfully."
+    refute html =~ "Disabled Filter Toggle"
+    assert html =~ "Showing 0 customers"
   end
 
   test "searches by fullname and email", %{conn: conn} do
@@ -267,5 +322,15 @@ defmodule CaHeoShopWeb.Admin.CustomerLiveTest do
 
     assert render(view) =~ "Customer not found."
     refute has_element?(view, "#customer-edit-form")
+  end
+
+  test "rejects toggling non-customer users", %{conn: conn} do
+    system_user = system_user_fixture(%{fullname: "System User"})
+
+    {:ok, view, _html} = live(conn, ~p"/admin/customers")
+
+    render_click(view, "toggle_customer_enabled", %{"id" => Integer.to_string(system_user.id)})
+
+    assert render(view) =~ "Could not update customer status."
   end
 end
