@@ -12,7 +12,6 @@ defmodule CaHeoShopWeb.AdminLive do
       |> assign(:metrics, mock_metrics())
       |> assign(:products, products)
       |> assign(:orders, mock_orders())
-      |> assign(:customers, mock_customers())
       |> assign(:collections, [])
       |> assign(:selected_product, selected_product)
       |> assign(:top_purchased_products, mock_top_purchased_products())
@@ -49,8 +48,6 @@ defmodule CaHeoShopWeb.AdminLive do
             <.delete_confirmation_page resource={@selected_product} resource_type={:product} />
           <% :orders -> %>
             <.orders_page orders={@orders} />
-          <% :customers -> %>
-            <.customers_page customers={@customers} />
           <% :settings -> %>
             <.settings_page settings={@settings} />
         <% end %>
@@ -433,57 +430,6 @@ defmodule CaHeoShopWeb.AdminLive do
     """
   end
 
-  attr :customers, :list, required: true
-
-  def customers_page(assigns) do
-    ~H"""
-    <.page_header title="Customers" section="Ecommerce" description="Mock customer directory." />
-
-    <section class="card mt-6 bg-base-100 shadow-sm">
-      <div class="card-body p-0">
-        <.table_toolbar filter="Segment" />
-        <div class="overflow-auto">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Orders</th>
-                <th>Last Order</th>
-                <th class="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={customer <- @customers} class="hover:bg-base-200/40">
-                <td>
-                  <div class="flex items-center gap-3">
-                    <div class="avatar avatar-placeholder">
-                      <div class="size-10 rounded-box bg-base-200 text-xs font-semibold">
-                        {customer.initials}
-                      </div>
-                    </div>
-                    <div>
-                      <p class="font-medium">{customer.name}</p>
-                      <p class="text-xs text-base-content/60">{customer.location}</p>
-                    </div>
-                  </div>
-                </td>
-                <td>{customer.email}</td>
-                <td>{customer.phone}</td>
-                <td>{customer.orders}</td>
-                <td>{customer.last_order}</td>
-                <td class="text-right"><.row_actions /></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <.pagination count={length(@customers)} label="customers" />
-      </div>
-    </section>
-    """
-  end
-
   attr :product, :map, required: true
   attr :collections, :list, required: true
   attr :mode, :atom, required: true
@@ -815,7 +761,6 @@ defmodule CaHeoShopWeb.AdminLive do
   defp page_title(:product_new), do: "Create Product"
   defp page_title(:product_delete), do: "Delete Product"
   defp page_title(:orders), do: "Admin Orders"
-  defp page_title(:customers), do: "Admin Customers"
   defp page_title(:settings), do: "Admin Settings"
 
   defp product_action?(action),
@@ -999,38 +944,6 @@ defmodule CaHeoShopWeb.AdminLive do
         status: "Draft",
         total: "Quote",
         created_at: "2026-06-08"
-      }
-    ]
-  end
-
-  defp mock_customers do
-    [
-      %{
-        name: "Halo Nguyen",
-        initials: "HN",
-        email: "halo@example.com",
-        phone: "090 000 0001",
-        orders: 4,
-        last_order: "2026-06-11",
-        location: "Ho Chi Minh City"
-      },
-      %{
-        name: "Linh Tran",
-        initials: "LT",
-        email: "linh@example.com",
-        phone: "090 000 0002",
-        orders: 2,
-        last_order: "2026-06-10",
-        location: "Da Nang"
-      },
-      %{
-        name: "Minh Pham",
-        initials: "MP",
-        email: "minh@example.com",
-        phone: "090 000 0003",
-        orders: 1,
-        last_order: "2026-06-09",
-        location: "Hanoi"
       }
     ]
   end

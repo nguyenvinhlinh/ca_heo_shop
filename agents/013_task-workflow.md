@@ -1,4 +1,4 @@
-[todo] 042-00_real-admin-customer-index.md
+[DONE] ✅ [16/06/2026 04:27] 042-00_real-admin-customer-index.md
 
 [backlog] 042-01_admin-edit-customer-info.md
 

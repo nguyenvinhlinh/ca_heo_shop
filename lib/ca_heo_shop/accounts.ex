@@ -8,6 +8,10 @@ defmodule CaHeoShop.Accounts do
 
   alias CaHeoShop.Accounts.{User, UserToken, UserNotifier}
 
+  @customer_default_page 1
+  @customer_default_page_size 25
+  @customer_supported_page_sizes [25, 50, 100]
+
   ## Database getters
 
   @doc """
@@ -58,10 +62,34 @@ defmodule CaHeoShop.Accounts do
   def get_user_by_login_and_password(login, password)
       when is_binary(login) and is_binary(password) do
     user = get_user_by_login(login)
-    if User.valid_password?(user, password), do: user
+
+    if login_allowed?(user) and User.valid_password?(user, password), do: user
   end
 
   def get_user_by_login_and_password(_, _), do: nil
+
+  def list_customers(params \\ %{}) do
+    params = normalize_customer_index_params(params)
+
+    base_query =
+      User
+      |> where([user], user.role == "customer")
+      |> customer_enabled_query(params.enabled)
+      |> customer_search_query(params.q)
+
+    total_count = Repo.aggregate(base_query, :count, :id)
+    total_pages = max(Integer.ceil_div(total_count, params.page_size), 1)
+    page = min(params.page, total_pages)
+
+    entries =
+      base_query
+      |> order_by([user], desc: user.inserted_at, desc: user.id)
+      |> limit(^params.page_size)
+      |> offset(^((page - 1) * params.page_size))
+      |> Repo.all()
+
+    build_customer_index(entries, params, total_count, page, total_pages)
+  end
 
   @doc """
   Gets a single user.
@@ -238,7 +266,8 @@ defmodule CaHeoShop.Accounts do
   """
   def get_user_by_magic_link_token(token) do
     with {:ok, query} <- UserToken.verify_magic_link_token_query(token),
-         {user, _token} <- Repo.one(query) do
+         {user, _token} <- Repo.one(query),
+         true <- login_allowed?(user) do
       user
     else
       _ -> nil
@@ -278,15 +307,26 @@ defmodule CaHeoShop.Accounts do
         """
 
       {%User{confirmed_at: nil} = user, _token} ->
-        user
-        |> User.confirm_changeset()
-        |> update_user_and_delete_all_tokens()
+        if login_allowed?(user) do
+          user
+          |> User.confirm_changeset()
+          |> update_user_and_delete_all_tokens()
+        else
+          {:error, :not_found}
+        end
 
       {user, token} ->
-        Repo.delete!(token)
-        {:ok, {user, []}}
+        if login_allowed?(user) do
+          Repo.delete!(token)
+          {:ok, {user, []}}
+        else
+          {:error, :not_found}
+        end
 
       nil ->
+        {:error, :not_found}
+
+      _ ->
         {:error, :not_found}
     end
   end
@@ -338,5 +378,100 @@ defmodule CaHeoShop.Accounts do
         {:ok, {user, tokens_to_expire}}
       end
     end)
+  end
+
+  defp login_allowed?(%User{role: "customer", is_customer_enabled: false}), do: false
+  defp login_allowed?(%User{}), do: true
+  defp login_allowed?(_user), do: false
+
+  defp normalize_customer_index_params(params) do
+    %{
+      enabled:
+        normalize_customer_enabled_filter(Map.get(params, "enabled") || Map.get(params, :enabled)),
+      q: normalize_customer_query(Map.get(params, "q") || Map.get(params, :q)),
+      page:
+        normalize_positive_integer(
+          Map.get(params, "page") || Map.get(params, :page),
+          @customer_default_page
+        ),
+      page_size:
+        normalize_supported_page_size(
+          Map.get(params, "page_size") || Map.get(params, :page_size),
+          @customer_default_page_size
+        )
+    }
+  end
+
+  defp normalize_customer_enabled_filter(value) when value in ["true", true], do: "true"
+  defp normalize_customer_enabled_filter(value) when value in ["false", false], do: "false"
+  defp normalize_customer_enabled_filter(_value), do: "all"
+
+  defp normalize_customer_query(value) when is_binary(value), do: String.trim(value)
+  defp normalize_customer_query(_value), do: ""
+
+  defp normalize_positive_integer(value, _default) when is_integer(value) and value > 0, do: value
+
+  defp normalize_positive_integer(value, default) when is_binary(value) do
+    case Integer.parse(value) do
+      {parsed, ""} when parsed > 0 -> parsed
+      _ -> default
+    end
+  end
+
+  defp normalize_positive_integer(_value, default), do: default
+
+  defp normalize_supported_page_size(value, default) do
+    page_size = normalize_positive_integer(value, default)
+
+    if page_size in @customer_supported_page_sizes do
+      page_size
+    else
+      default
+    end
+  end
+
+  defp customer_enabled_query(query, "true"),
+    do: where(query, [user], user.is_customer_enabled == true)
+
+  defp customer_enabled_query(query, "false"),
+    do: where(query, [user], user.is_customer_enabled == false)
+
+  defp customer_enabled_query(query, _enabled), do: query
+
+  defp customer_search_query(query, ""), do: query
+
+  defp customer_search_query(query, q) do
+    pattern = "%#{q}%"
+
+    where(
+      query,
+      [user],
+      ilike(fragment("coalesce(?, '')", user.fullname), ^pattern) or
+        ilike(fragment("coalesce(?, '')", user.email), ^pattern)
+    )
+  end
+
+  defp build_customer_index(entries, params, total_count, page, total_pages) do
+    {from, to} =
+      case entries do
+        [] ->
+          {0, 0}
+
+        _entries ->
+          from = (page - 1) * params.page_size + 1
+          {from, from + length(entries) - 1}
+      end
+
+    %{
+      entries: entries,
+      page: page,
+      page_size: params.page_size,
+      total_count: total_count,
+      total_pages: total_pages,
+      from: from,
+      to: to,
+      enabled: params.enabled,
+      q: params.q
+    }
   end
 end

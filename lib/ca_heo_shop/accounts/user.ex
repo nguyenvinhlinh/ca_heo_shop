@@ -8,6 +8,8 @@ defmodule CaHeoShop.Accounts.User do
     field :email, :string
     field :username, :string
     field :fullname, :string
+    field :phone_number, :string
+    field :is_customer_enabled, :boolean, default: true
     field :role, :string, default: "customer"
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
@@ -46,7 +48,16 @@ defmodule CaHeoShop.Accounts.User do
 
   def seed_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:email, :username, :fullname, :role, :password, :confirmed_at])
+    |> cast(attrs, [
+      :email,
+      :username,
+      :fullname,
+      :phone_number,
+      :is_customer_enabled,
+      :role,
+      :password,
+      :confirmed_at
+    ])
     |> validate_required([:role, :password])
     |> validate_email_or_username()
     |> validate_email_if_present(opts)

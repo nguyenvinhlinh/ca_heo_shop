@@ -110,6 +110,19 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid login or password"
       assert redirected_to(conn) == ~p"/users/log-in"
     end
+
+    test "does not log in disabled customers", %{conn: conn} do
+      user = customer_user_fixture(%{is_customer_enabled: false}) |> set_password()
+
+      conn =
+        post(conn, ~p"/users/log-in", %{
+          "user" => %{"login" => user.email, "password" => valid_user_password()}
+        })
+
+      refute get_session(conn, :user_token)
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid login or password"
+      assert redirected_to(conn) == ~p"/users/log-in"
+    end
   end
 
   describe "POST /users/log-in - magic link" do
@@ -161,6 +174,23 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
         post(conn, ~p"/users/log-in", %{
           "user" => %{"token" => "invalid"}
         })
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
+               "The link is invalid or it has expired."
+
+      assert redirected_to(conn) == ~p"/users/log-in"
+    end
+
+    test "does not log in disabled customers by magic link", %{conn: conn} do
+      user = customer_user_fixture(%{is_customer_enabled: false})
+      {token, _hashed_token} = generate_user_magic_link_token(user)
+
+      conn =
+        post(conn, ~p"/users/log-in", %{
+          "user" => %{"token" => token}
+        })
+
+      refute get_session(conn, :user_token)
 
       assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
                "The link is invalid or it has expired."

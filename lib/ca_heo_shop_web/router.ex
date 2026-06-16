@@ -85,7 +85,7 @@ defmodule CaHeoShopWeb.Router do
       live "/admin/products/:id", Admin.ProductLive, :product_show
       live "/admin/products/:slug/delete", AdminLive, :product_delete
       live "/admin/orders", AdminLive, :orders
-      live "/admin/customers", AdminLive, :customers
+      live "/admin/customers", Admin.CustomerLive, :index
       live "/admin/collections", Admin.CollectionLive, :collections
       live "/admin/collections/new", Admin.CollectionLive, :collection_new
       live "/admin/collections/:slug/edit", Admin.CollectionLive, :collection_edit

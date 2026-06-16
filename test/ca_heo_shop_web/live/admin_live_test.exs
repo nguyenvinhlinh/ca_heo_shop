@@ -470,15 +470,6 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     assert html =~ "Pending"
   end
 
-  test "renders customer management page", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/admin/customers")
-
-    assert html =~ "Customers"
-    refute html =~ "Search"
-    assert html =~ "Halo Nguyen"
-    assert html =~ "090 000 0001"
-  end
-
   test "renders collection management empty state", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/admin/collections")
 

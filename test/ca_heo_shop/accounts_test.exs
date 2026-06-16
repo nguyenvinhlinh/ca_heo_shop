@@ -105,6 +105,89 @@ defmodule CaHeoShop.AccountsTest do
       assert %User{id: ^id} =
                Accounts.get_user_by_login_and_password("  trimmed_admin  ", valid_user_password())
     end
+
+    test "does not allow disabled customers to log in" do
+      user = customer_user_fixture(%{is_customer_enabled: false}) |> set_password()
+
+      refute Accounts.get_user_by_login_and_password(user.email, valid_user_password())
+    end
+
+    test "does not block disabled admin or system logins" do
+      admin_user = admin_user_fixture(%{is_customer_enabled: false}) |> set_password()
+      system_user = system_user_fixture(%{is_customer_enabled: false}) |> set_password()
+
+      assert Accounts.get_user_by_login_and_password(
+               admin_user.username,
+               valid_user_password()
+             )
+
+      assert Accounts.get_user_by_login_and_password(
+               system_user.username,
+               valid_user_password()
+             )
+    end
+  end
+
+  describe "list_customers/1" do
+    test "lists only customer users" do
+      customer = customer_user_fixture(%{fullname: "Customer One"})
+      _admin = admin_user_fixture(%{fullname: "Admin User"})
+      _system = system_user_fixture(%{fullname: "System User"})
+
+      result = Accounts.list_customers()
+
+      assert Enum.map(result.entries, & &1.id) == [customer.id]
+      assert result.total_count == 1
+      assert result.page == 1
+      assert result.page_size == 25
+      assert result.enabled == "all"
+      assert result.q == ""
+    end
+
+    test "filters customers by enabled state" do
+      enabled_customer = customer_user_fixture(%{fullname: "Enabled Customer"})
+
+      disabled_customer =
+        customer_user_fixture(%{fullname: "Disabled Customer", is_customer_enabled: false})
+
+      enabled_result = Accounts.list_customers(%{"enabled" => "true"})
+      disabled_result = Accounts.list_customers(%{"enabled" => "false"})
+
+      assert Enum.map(enabled_result.entries, & &1.id) == [enabled_customer.id]
+      assert Enum.map(disabled_result.entries, & &1.id) == [disabled_customer.id]
+    end
+
+    test "searches customers by fullname and email" do
+      fullname_customer = customer_user_fixture(%{fullname: "Nguyen Van Customer"})
+      email_customer = customer_user_fixture(%{email: "special-customer@example.com"})
+      _other_customer = customer_user_fixture(%{fullname: "Other Person"})
+
+      fullname_result = Accounts.list_customers(%{"q" => "nguyen"})
+      email_result = Accounts.list_customers(%{"q" => "special-customer"})
+
+      assert Enum.map(fullname_result.entries, & &1.id) == [fullname_customer.id]
+      assert Enum.map(email_result.entries, & &1.id) == [email_customer.id]
+    end
+
+    test "supports pagination and page size normalization" do
+      for index <- 1..30 do
+        customer_user_fixture(%{fullname: "Paged Customer #{index}"})
+      end
+
+      page_result = Accounts.list_customers(%{"page" => "2", "page_size" => "25"})
+      invalid_result = Accounts.list_customers(%{"page" => "0", "page_size" => "13"})
+
+      assert page_result.page == 2
+      assert page_result.page_size == 25
+      assert page_result.total_count == 30
+      assert page_result.total_pages == 2
+      assert page_result.from == 26
+      assert page_result.to == 30
+      assert length(page_result.entries) == 5
+
+      assert invalid_result.page == 1
+      assert invalid_result.page_size == 25
+    end
   end
 
   describe "get_user!/1" do
@@ -713,6 +796,13 @@ defmodule CaHeoShop.AccountsTest do
       {1, nil} = Repo.update_all(UserToken, set: [inserted_at: ~N[2020-01-01 00:00:00]])
       refute Accounts.get_user_by_magic_link_token(token)
     end
+
+    test "does not return disabled customers by token" do
+      user = customer_user_fixture(%{is_customer_enabled: false})
+      {encoded_token, _hashed_token} = generate_user_magic_link_token(user)
+
+      refute Accounts.get_user_by_magic_link_token(encoded_token)
+    end
   end
 
   describe "login_user_by_magic_link/1" do
@@ -744,6 +834,13 @@ defmodule CaHeoShop.AccountsTest do
       assert_raise RuntimeError, ~r/magic link log in is not allowed/, fn ->
         Accounts.login_user_by_magic_link(encoded_token)
       end
+    end
+
+    test "does not log in disabled customers" do
+      user = customer_user_fixture(%{is_customer_enabled: false})
+      {encoded_token, _hashed_token} = generate_user_magic_link_token(user)
+
+      assert {:error, :not_found} = Accounts.login_user_by_magic_link(encoded_token)
     end
   end
 
