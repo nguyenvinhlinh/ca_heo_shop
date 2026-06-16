@@ -17,6 +17,18 @@ defmodule CaHeoShopWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :system_user_required do
+    plug :require_system_user
+  end
+
+  pipeline :admin_user_required do
+    plug :require_admin_user
+  end
+
+  pipeline :customer_user_required do
+    plug :require_customer_user
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", CaHeoShopWeb do
   #   pipe_through :api
@@ -46,6 +58,27 @@ defmodule CaHeoShopWeb.Router do
 
     live_session :require_authenticated_user,
       on_mount: [{CaHeoShopWeb.UserAuth, :require_authenticated}] do
+      live "/users/settings", UserLive.Settings, :edit
+      live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
+    end
+
+    post "/users/update-password", UserSessionController, :update_password
+  end
+
+  scope "/", CaHeoShopWeb do
+    pipe_through [:browser, :system_user_required]
+
+    live_session :require_system_user,
+      on_mount: [{CaHeoShopWeb.UserAuth, :require_system_user}] do
+      live "/system", System.HomeLive, :index
+    end
+  end
+
+  scope "/", CaHeoShopWeb do
+    pipe_through [:browser, :admin_user_required]
+
+    live_session :require_admin_user,
+      on_mount: [{CaHeoShopWeb.UserAuth, :require_admin_user}] do
       live "/admin", AdminLive, :dashboard
       live "/admin/products", Admin.ProductLive, :products
       live "/admin/products/new", Admin.ProductLive, :product_new
@@ -57,12 +90,18 @@ defmodule CaHeoShopWeb.Router do
       live "/admin/collections/new", Admin.CollectionLive, :collection_new
       live "/admin/collections/:slug/edit", Admin.CollectionLive, :collection_edit
       live "/admin/settings", AdminLive, :settings
-
-      live "/users/settings", UserLive.Settings, :edit
-      live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
+  end
 
-    post "/users/update-password", UserSessionController, :update_password
+  scope "/", CaHeoShopWeb do
+    pipe_through [:browser, :customer_user_required]
+
+    live_session :require_customer_user,
+      on_mount: [{CaHeoShopWeb.UserAuth, :require_customer_user}] do
+      live "/products", StorefrontLive, :products
+      live "/products/:slug", StorefrontLive, :product
+      live "/cart", StorefrontLive, :cart
+    end
   end
 
   scope "/", CaHeoShopWeb do
@@ -74,11 +113,8 @@ defmodule CaHeoShopWeb.Router do
     live_session :current_user,
       on_mount: [{CaHeoShopWeb.UserAuth, :mount_current_scope}] do
       live "/", StorefrontLive, :home
-      live "/products", StorefrontLive, :products
-      live "/products/:slug", StorefrontLive, :product
       live "/collections", StorefrontLive, :collections
       live "/collections/:slug", StorefrontLive, :collection
-      live "/cart", StorefrontLive, :cart
       live "/checkout", StorefrontLive, :checkout
       live "/account", StorefrontLive, :account
       live "/orders", StorefrontLive, :orders

@@ -57,16 +57,11 @@ defmodule CaHeoShopWeb.UserLive.LoginTest do
 
       conn = submit_form(form, conn)
 
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/products"
     end
 
     test "redirects if user logs in with valid username credentials", %{conn: conn} do
-      {:ok, user} =
-        CaHeoShop.Accounts.create_seed_user(%{
-          username: "live_admin",
-          role: "admin",
-          password: valid_user_password()
-        })
+      user = admin_user_fixture(%{username: "live_admin"})
 
       {:ok, lv, _html} = live(conn, ~p"/users/log-in")
 
@@ -77,7 +72,7 @@ defmodule CaHeoShopWeb.UserLive.LoginTest do
 
       conn = submit_form(form, conn)
 
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/admin"
     end
 
     test "redirects to login page with a flash error if credentials are invalid", %{

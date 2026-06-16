@@ -65,7 +65,7 @@ defmodule CaHeoShopWeb.Layouts do
         <ul class="menu menu-horizontal items-center gap-2 px-1">
           <%= if @current_scope do %>
             <li>
-              <span>{@current_scope.user.email}</span>
+              <span>{user_identity(@current_scope.user)}</span>
             </li>
             <li>
               <.link href={~p"/users/settings"}>Settings</.link>
@@ -95,6 +95,12 @@ defmodule CaHeoShopWeb.Layouts do
     <.flash_group flash={@flash} />
     """
   end
+
+  defp user_identity(%{username: username}) when is_binary(username) and username != "",
+    do: username
+
+  defp user_identity(%{email: email}) when is_binary(email), do: email
+  defp user_identity(_user), do: ""
 
   @doc """
   Shows the flash group with standard titles and content.

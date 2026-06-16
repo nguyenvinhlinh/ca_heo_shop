@@ -8,7 +8,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
   import CaHeoShop.ProductsFixtures
   import Phoenix.LiveViewTest
 
-  setup :register_and_log_in_user
+  setup :register_and_log_in_admin_user
   setup :set_collection_assets_path
 
   test "redirects guests from admin dashboard" do
@@ -30,7 +30,7 @@ defmodule CaHeoShopWeb.AdminLiveTest do
     refute html =~ "Search"
     assert html =~ "Recent Orders"
     assert html =~ "Product Overview"
-    assert html =~ user.email
+    assert html =~ user.username
   end
 
   test "renders product management page with real products and controls", %{conn: conn} do

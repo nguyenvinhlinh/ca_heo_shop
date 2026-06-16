@@ -1,6 +1,7 @@
 defmodule CaHeoShopWeb.StorefrontLiveTest do
   use CaHeoShopWeb.ConnCase
 
+  import CaHeoShop.AccountsFixtures
   import Phoenix.LiveViewTest
 
   test "renders the storefront homepage", %{conn: conn} do
@@ -16,6 +17,7 @@ defmodule CaHeoShopWeb.StorefrontLiveTest do
   end
 
   test "renders product listing page", %{conn: conn} do
+    conn = log_in_user(conn, customer_user_fixture())
     {:ok, _view, html} = live(conn, ~p"/products")
 
     assert html =~ "Products"
@@ -24,6 +26,7 @@ defmodule CaHeoShopWeb.StorefrontLiveTest do
   end
 
   test "renders product detail page", %{conn: conn} do
+    conn = log_in_user(conn, customer_user_fixture())
     {:ok, view, html} = live(conn, ~p"/products/modular-desk-organizer")
 
     assert html =~ "Modular Desk Organizer"
@@ -31,6 +34,7 @@ defmodule CaHeoShopWeb.StorefrontLiveTest do
   end
 
   test "renders cart, checkout, and account pages", %{conn: conn} do
+    conn = log_in_user(conn, customer_user_fixture())
     {:ok, _cart, cart_html} = live(conn, ~p"/cart")
     assert cart_html =~ "Order Summary"
 

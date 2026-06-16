@@ -204,7 +204,7 @@ defmodule CaHeoShopWeb.AdminLive do
         <div class="dropdown dropdown-end">
           <button type="button" tabindex="0" class="btn btn-ghost btn-sm max-w-56 gap-2">
             <.icon name="hero-user-circle" class="size-5" />
-            <span class="hidden truncate sm:inline">{@current_scope.user.email}</span>
+            <span class="hidden truncate sm:inline">{user_identity(@current_scope.user)}</span>
           </button>
           <ul
             tabindex="0"
@@ -218,6 +218,12 @@ defmodule CaHeoShopWeb.AdminLive do
     </header>
     """
   end
+
+  defp user_identity(%{username: username}) when is_binary(username) and username != "",
+    do: username
+
+  defp user_identity(%{email: email}) when is_binary(email), do: email
+  defp user_identity(_user), do: ""
 
   attr :title, :string, required: true
   attr :section, :string, default: "Admin"

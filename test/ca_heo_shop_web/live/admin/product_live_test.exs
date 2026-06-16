@@ -7,7 +7,7 @@ defmodule CaHeoShopWeb.Admin.ProductLiveTest do
   import CaHeoShop.ProductsFixtures
   import Phoenix.LiveViewTest
 
-  setup :register_and_log_in_user
+  setup :register_and_log_in_admin_user
   setup :set_collection_assets_path
 
   describe "product detail page" do

@@ -25,7 +25,7 @@ defmodule CaHeoShopWeb.UserAuthTest do
       conn = UserAuth.log_in_user(conn, user)
       assert token = get_session(conn, :user_token)
       assert get_session(conn, :live_socket_id) == "users_sessions:#{Base.url_encode64(token)}"
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/products"
       assert Accounts.get_user_by_session_token(token)
     end
 
@@ -59,9 +59,13 @@ defmodule CaHeoShopWeb.UserAuthTest do
       refute get_session(conn, :to_be_removed)
     end
 
-    test "redirects to the configured path", %{conn: conn, user: user} do
-      conn = conn |> put_session(:user_return_to, "/hello") |> UserAuth.log_in_user(user)
-      assert redirected_to(conn) == "/hello"
+    test "redirects to an allowed return-to path", %{conn: conn, user: user} do
+      conn =
+        conn
+        |> put_session(:user_return_to, "/products?page=2")
+        |> UserAuth.log_in_user(user)
+
+      assert redirected_to(conn) == "/products?page=2"
     end
 
     test "writes a cookie if remember_me is configured", %{conn: conn, user: user} do
@@ -74,13 +78,30 @@ defmodule CaHeoShopWeb.UserAuthTest do
       assert max_age == @remember_me_cookie_max_age
     end
 
-    test "redirects to settings when user is already logged in", %{conn: conn, user: user} do
+    test "redirects logged-in customers to the customer home", %{conn: conn, user: user} do
       conn =
         conn
         |> assign(:current_scope, Scope.for_user(user))
         |> UserAuth.log_in_user(user)
 
-      assert redirected_to(conn) == ~p"/users/settings"
+      assert redirected_to(conn) == ~p"/products"
+    end
+
+    test "redirects admins to the admin home", %{conn: conn} do
+      user = %{admin_user_fixture() | authenticated_at: DateTime.utc_now(:second)}
+      conn = UserAuth.log_in_user(conn, user)
+      assert redirected_to(conn) == ~p"/admin"
+    end
+
+    test "redirects systems to the system home", %{conn: conn} do
+      user = %{system_user_fixture() | authenticated_at: DateTime.utc_now(:second)}
+      conn = UserAuth.log_in_user(conn, user)
+      assert redirected_to(conn) == ~p"/system"
+    end
+
+    test "ignores forbidden return-to paths and uses the role home", %{conn: conn, user: user} do
+      conn = conn |> put_session(:user_return_to, "/admin") |> UserAuth.log_in_user(user)
+      assert redirected_to(conn) == ~p"/products"
     end
 
     test "writes a cookie if remember_me was set in previous session", %{conn: conn, user: user} do
@@ -279,6 +300,55 @@ defmodule CaHeoShopWeb.UserAuthTest do
 
       {:halt, updated_socket} = UserAuth.on_mount(:require_authenticated, %{}, session, socket)
       assert updated_socket.assigns.current_scope == nil
+    end
+  end
+
+  describe "on_mount role requirements" do
+    test "allows admin users into the admin mount", %{conn: conn} do
+      user = admin_user_fixture()
+      user_token = Accounts.generate_user_session_token(user)
+      session = conn |> put_session(:user_token, user_token) |> get_session()
+
+      assert {:cont, updated_socket} =
+               UserAuth.on_mount(:require_admin_user, %{}, session, %LiveView.Socket{})
+
+      assert updated_socket.assigns.current_scope.user.id == user.id
+    end
+
+    test "redirects customers away from the admin mount", %{conn: conn} do
+      user = customer_user_fixture()
+      user_token = Accounts.generate_user_session_token(user)
+      session = conn |> put_session(:user_token, user_token) |> get_session()
+
+      socket = %LiveView.Socket{
+        endpoint: CaHeoShopWeb.Endpoint,
+        assigns: %{__changed__: %{}, flash: %{}}
+      }
+
+      assert {:halt, _updated_socket} =
+               UserAuth.on_mount(:require_admin_user, %{}, session, socket)
+    end
+
+    test "allows system users into the system mount", %{conn: conn} do
+      user = system_user_fixture()
+      user_token = Accounts.generate_user_session_token(user)
+      session = conn |> put_session(:user_token, user_token) |> get_session()
+
+      assert {:cont, updated_socket} =
+               UserAuth.on_mount(:require_system_user, %{}, session, %LiveView.Socket{})
+
+      assert updated_socket.assigns.current_scope.user.id == user.id
+    end
+
+    test "allows customer users into the customer mount", %{conn: conn} do
+      user = customer_user_fixture()
+      user_token = Accounts.generate_user_session_token(user)
+      session = conn |> put_session(:user_token, user_token) |> get_session()
+
+      assert {:cont, updated_socket} =
+               UserAuth.on_mount(:require_customer_user, %{}, session, %LiveView.Socket{})
+
+      assert updated_socket.assigns.current_scope.user.id == user.id
     end
   end
 

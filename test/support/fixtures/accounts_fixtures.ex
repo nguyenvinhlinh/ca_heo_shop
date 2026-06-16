@@ -10,6 +10,7 @@ defmodule CaHeoShop.AccountsFixtures do
   alias CaHeoShop.Accounts.Scope
 
   def unique_user_email, do: "user#{System.unique_integer()}@example.com"
+  def unique_username(prefix \\ "user"), do: "#{prefix}_#{System.unique_integer([:positive])}"
   def valid_user_password, do: "hello world!"
 
   def valid_user_attributes(attrs \\ %{}) do
@@ -39,6 +40,42 @@ defmodule CaHeoShop.AccountsFixtures do
       Accounts.login_user_by_magic_link(token)
 
     user
+  end
+
+  def system_user_fixture(attrs \\ %{}) do
+    create_role_user_fixture(
+      %{
+        username: unique_username("system"),
+        role: "system",
+        password: valid_user_password(),
+        confirmed_at: DateTime.utc_now(:second)
+      },
+      attrs
+    )
+  end
+
+  def admin_user_fixture(attrs \\ %{}) do
+    create_role_user_fixture(
+      %{
+        username: unique_username("admin"),
+        role: "admin",
+        password: valid_user_password(),
+        confirmed_at: DateTime.utc_now(:second)
+      },
+      attrs
+    )
+  end
+
+  def customer_user_fixture(attrs \\ %{}) do
+    create_role_user_fixture(
+      %{
+        email: unique_user_email(),
+        role: "customer",
+        password: valid_user_password(),
+        confirmed_at: DateTime.utc_now(:second)
+      },
+      attrs
+    )
   end
 
   def user_scope_fixture do
@@ -85,5 +122,14 @@ defmodule CaHeoShop.AccountsFixtures do
       from(ut in Accounts.UserToken, where: ut.token == ^token),
       set: [inserted_at: dt, authenticated_at: dt]
     )
+  end
+
+  defp create_role_user_fixture(defaults, attrs) do
+    {:ok, user} =
+      defaults
+      |> Map.merge(Enum.into(attrs, %{}))
+      |> Accounts.create_seed_user()
+
+    user
   end
 end

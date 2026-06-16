@@ -18,7 +18,7 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
         })
 
       assert get_session(conn, :user_token)
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/products"
 
       # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
@@ -41,15 +41,15 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
         })
 
       assert conn.resp_cookies["_ca_heo_shop_web_user_remember_me"]
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/products"
     end
 
-    test "logs the user in with return to", %{conn: conn, user: user} do
+    test "logs the user in with an allowed return to path", %{conn: conn, user: user} do
       user = set_password(user)
 
       conn =
         conn
-        |> init_test_session(user_return_to: "/foo/bar")
+        |> init_test_session(user_return_to: "/products?page=2")
         |> post(~p"/users/log-in", %{
           "user" => %{
             "login" => user.email,
@@ -57,17 +57,12 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
           }
         })
 
-      assert redirected_to(conn) == "/foo/bar"
+      assert redirected_to(conn) == "/products?page=2"
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Welcome back!"
     end
 
     test "logs the user in with username", %{conn: conn} do
-      {:ok, user} =
-        Accounts.create_seed_user(%{
-          username: "controller_admin",
-          role: "admin",
-          password: valid_user_password()
-        })
+      user = admin_user_fixture(%{username: "controller_admin"})
 
       conn =
         post(conn, ~p"/users/log-in", %{
@@ -75,7 +70,35 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
         })
 
       assert get_session(conn, :user_token)
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/admin"
+    end
+
+    test "logs the system user in to the system home", %{conn: conn} do
+      user = system_user_fixture(%{username: "controller_system"})
+
+      conn =
+        post(conn, ~p"/users/log-in", %{
+          "user" => %{"login" => user.username, "password" => valid_user_password()}
+        })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/system"
+    end
+
+    test "ignores forbidden return-to paths after login", %{conn: conn, user: user} do
+      user = set_password(user)
+
+      conn =
+        conn
+        |> init_test_session(user_return_to: "/admin")
+        |> post(~p"/users/log-in", %{
+          "user" => %{
+            "login" => user.email,
+            "password" => valid_user_password()
+          }
+        })
+
+      assert redirected_to(conn) == ~p"/products"
     end
 
     test "redirects to login page with invalid credentials", %{conn: conn, user: user} do
@@ -99,7 +122,7 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
         })
 
       assert get_session(conn, :user_token)
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/products"
 
       # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
@@ -120,7 +143,7 @@ defmodule CaHeoShopWeb.UserSessionControllerTest do
         })
 
       assert get_session(conn, :user_token)
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/products"
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "User confirmed successfully."
 
       assert Accounts.get_user!(user.id).confirmed_at

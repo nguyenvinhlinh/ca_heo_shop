@@ -1,10 +1,19 @@
-[DONE] ✅ [15/06/2026 09:08] 041_move_admin_liveview_to_admin_namespace.md
+[todo] 042-00_real-admin-customer-index.md
 
-[DONE] ✅ [15/06/2026 09:22] 033_update-users-with-role-fullname.md
+[backlog] 042-01_admin-edit-customer-info.md
+
+[backlog] 042-02_admin-toggle-enabled-customer.md
+
+
+
+
+[DONE] ✅ [15/06/2026 17:14] 035_add-role-based-route-authorization.md
 
 [DONE] ✅ [15/06/2026 09:31] 034_allow-login-w-username-and-email.md
 
-[backlog] 035_add-role-based-route-authorization.md
+[DONE] ✅ [15/06/2026 09:22] 033_update-users-with-role-fullname.md
+
+[DONE] ✅ [15/06/2026 09:08] 041_move_admin_liveview_to_admin_namespace.md
 
 [DONE] ✅ [15/06/2026 08:42] 039-16_admin_delete_product_from_index.md
 

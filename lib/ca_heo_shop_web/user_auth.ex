@@ -37,7 +37,7 @@ defmodule CaHeoShopWeb.UserAuth do
 
     conn
     |> create_or_extend_session(user, params)
-    |> redirect(to: user_return_to || signed_in_path(conn))
+    |> redirect(to: redirect_path_after_login(user, user_return_to))
   end
 
   @doc """
@@ -230,6 +230,18 @@ defmodule CaHeoShopWeb.UserAuth do
     end
   end
 
+  def on_mount(:require_system_user, _params, session, socket) do
+    require_role_mount(socket, session, "system")
+  end
+
+  def on_mount(:require_admin_user, _params, session, socket) do
+    require_role_mount(socket, session, "admin")
+  end
+
+  def on_mount(:require_customer_user, _params, session, socket) do
+    require_role_mount(socket, session, "customer")
+  end
+
   def on_mount(:require_sudo_mode, _params, session, socket) do
     socket = mount_current_scope(socket, session)
 
@@ -257,9 +269,8 @@ defmodule CaHeoShopWeb.UserAuth do
   end
 
   @doc "Returns the path to redirect to after log in."
-  # the user was already logged in, redirect to settings
-  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %Scope{user: %Accounts.User{}}}}) do
-    ~p"/users/settings"
+  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %Scope{user: %Accounts.User{} = user}}}) do
+    role_home_path(user)
   end
 
   def signed_in_path(_), do: ~p"/"
@@ -279,9 +290,111 @@ defmodule CaHeoShopWeb.UserAuth do
     end
   end
 
+  def require_system_user(conn, _opts) do
+    conn
+    |> require_authenticated_user([])
+    |> maybe_require_user_role("system")
+  end
+
+  def require_admin_user(conn, _opts) do
+    conn
+    |> require_authenticated_user([])
+    |> maybe_require_user_role("admin")
+  end
+
+  def require_customer_user(conn, _opts) do
+    conn
+    |> require_authenticated_user([])
+    |> maybe_require_user_role("customer")
+  end
+
+  def require_user_role(conn, expected_role) do
+    user = conn.assigns.current_scope.user
+
+    if user.role == expected_role do
+      conn
+    else
+      conn
+      |> put_flash(:error, "You are not allowed to access this page.")
+      |> redirect(to: unauthorized_redirect_path(user))
+      |> halt()
+    end
+  end
+
   defp maybe_store_return_to(%{method: "GET"} = conn) do
     put_session(conn, :user_return_to, current_path(conn))
   end
 
   defp maybe_store_return_to(conn), do: conn
+
+  defp maybe_require_user_role(%Plug.Conn{halted: true} = conn, _expected_role), do: conn
+  defp maybe_require_user_role(conn, expected_role), do: require_user_role(conn, expected_role)
+
+  defp require_role_mount(socket, session, expected_role) do
+    socket = mount_current_scope(socket, session)
+    user = socket.assigns.current_scope && socket.assigns.current_scope.user
+
+    cond do
+      is_nil(user) ->
+        socket =
+          socket
+          |> Phoenix.LiveView.put_flash(:error, "You must log in to access this page.")
+          |> Phoenix.LiveView.redirect(to: ~p"/users/log-in")
+
+        {:halt, socket}
+
+      user.role == expected_role ->
+        {:cont, socket}
+
+      true ->
+        socket =
+          socket
+          |> Phoenix.LiveView.put_flash(:error, "You are not allowed to access this page.")
+          |> Phoenix.LiveView.redirect(to: unauthorized_redirect_path(user))
+
+        {:halt, socket}
+    end
+  end
+
+  defp redirect_path_after_login(user, user_return_to) do
+    if return_path_allowed_for_role?(user_return_to, user.role) do
+      user_return_to
+    else
+      role_home_path(user)
+    end
+  end
+
+  defp unauthorized_redirect_path(%{role: "system"}), do: ~p"/system"
+  defp unauthorized_redirect_path(%{role: "admin"}), do: ~p"/admin"
+  defp unauthorized_redirect_path(%{role: "customer"}), do: ~p"/products"
+  defp unauthorized_redirect_path(_), do: ~p"/users/log-in"
+
+  defp role_home_path(%{role: "system"}), do: ~p"/system"
+  defp role_home_path(%{role: "admin"}), do: ~p"/admin"
+  defp role_home_path(%{role: "customer"}), do: ~p"/products"
+  defp role_home_path(_), do: ~p"/"
+
+  defp return_path_allowed_for_role?(nil, _role), do: false
+
+  defp return_path_allowed_for_role?(path, _role) when not is_binary(path), do: false
+
+  defp return_path_allowed_for_role?(path, role) do
+    normalized_path =
+      path
+      |> URI.parse()
+      |> Map.get(:path, "")
+
+    case role do
+      "system" -> allowed_path?(normalized_path, ["/system", "/users/settings"])
+      "admin" -> allowed_path?(normalized_path, ["/admin", "/users/settings"])
+      "customer" -> allowed_path?(normalized_path, ["/products", "/cart", "/users/settings"])
+      _ -> false
+    end
+  end
+
+  defp allowed_path?(path, allowed_prefixes) do
+    Enum.any?(allowed_prefixes, fn prefix ->
+      path == prefix or String.starts_with?(path, prefix <> "/")
+    end)
+  end
 end
