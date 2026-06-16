@@ -190,6 +190,57 @@ defmodule CaHeoShop.AccountsTest do
     end
   end
 
+  describe "update_customer_profile/2" do
+    test "updates fullname and phone number for customer users" do
+      customer =
+        customer_user_fixture(%{
+          fullname: "Original Customer",
+          phone_number: "0900 111 222"
+        })
+
+      assert {:ok, updated_customer} =
+               Accounts.update_customer_profile(customer, %{
+                 "fullname" => "Updated Customer",
+                 "phone_number" => "0900 999 888"
+               })
+
+      assert updated_customer.fullname == "Updated Customer"
+      assert updated_customer.phone_number == "0900 999 888"
+      assert Accounts.get_user!(customer.id).fullname == "Updated Customer"
+      assert Accounts.get_user!(customer.id).phone_number == "0900 999 888"
+    end
+
+    test "returns validation errors without persisting changes" do
+      customer = customer_user_fixture(%{fullname: "Original Customer"})
+      too_long_name = String.duplicate("a", 256)
+      too_long_phone = String.duplicate("1", 51)
+
+      assert {:error, changeset} =
+               Accounts.update_customer_profile(customer, %{
+                 "fullname" => too_long_name,
+                 "phone_number" => too_long_phone
+               })
+
+      assert "should be at most 255 character(s)" in errors_on(changeset).fullname
+      assert "should be at most 50 character(s)" in errors_on(changeset).phone_number
+
+      reloaded_customer = Accounts.get_user!(customer.id)
+      assert reloaded_customer.fullname == "Original Customer"
+      assert is_nil(reloaded_customer.phone_number)
+    end
+
+    test "rejects non-customer users" do
+      admin_user = admin_user_fixture(%{fullname: "Admin User"})
+      system_user = system_user_fixture(%{fullname: "System User"})
+
+      assert {:error, :not_found} =
+               Accounts.update_customer_profile(admin_user, %{"fullname" => "Changed Admin"})
+
+      assert {:error, :not_found} =
+               Accounts.update_customer_profile(system_user.id, %{"fullname" => "Changed System"})
+    end
+  end
+
   describe "get_user!/1" do
     test "raises if id is invalid" do
       assert_raise Ecto.NoResultsError, fn ->

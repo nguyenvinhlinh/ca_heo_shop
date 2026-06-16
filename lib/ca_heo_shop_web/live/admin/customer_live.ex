@@ -2,10 +2,15 @@ defmodule CaHeoShopWeb.Admin.CustomerLive do
   use CaHeoShopWeb, :live_view
 
   alias CaHeoShop.Accounts
+  alias CaHeoShop.Accounts.User
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, socket}
+    {:ok,
+     socket
+     |> assign(:editing_customer, nil)
+     |> assign(:show_customer_dialog, false)
+     |> assign(:customer_form, to_form(Accounts.change_customer_profile(%User{role: "customer"})))}
   end
 
   @impl true
@@ -42,6 +47,52 @@ defmodule CaHeoShopWeb.Admin.CustomerLive do
      push_patch(socket,
        to: ~p"/admin/customers?#{customer_filter_params(socket, %{"page" => page})}"
      )}
+  end
+
+  def handle_event("edit_customer", %{"id" => id}, socket) do
+    case Accounts.get_customer(id) do
+      %User{} = customer ->
+        {:noreply, open_customer_dialog(socket, customer)}
+
+      nil ->
+        {:noreply, put_flash(socket, :error, "Customer not found.")}
+    end
+  end
+
+  def handle_event("validate_customer", %{"user" => params}, socket) do
+    changeset =
+      socket.assigns.editing_customer
+      |> Accounts.change_customer_profile(params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :customer_form, to_form(changeset))}
+  end
+
+  def handle_event("save_customer", %{"user" => params}, socket) do
+    case Accounts.update_customer_profile(socket.assigns.editing_customer, params) do
+      {:ok, _customer} ->
+        {:noreply,
+         socket
+         |> close_customer_dialog()
+         |> assign_customer_index(socket.assigns.customer_filters)
+         |> put_flash(:info, "Customer updated successfully.")}
+
+      {:error, :not_found} ->
+        {:noreply,
+         socket
+         |> close_customer_dialog()
+         |> put_flash(:error, "Customer not found.")}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply,
+         socket
+         |> assign(:show_customer_dialog, true)
+         |> assign(:customer_form, to_form(Map.put(changeset, :action, :validate)))}
+    end
+  end
+
+  def handle_event("cancel_edit_customer", _params, socket) do
+    {:noreply, close_customer_dialog(socket)}
   end
 
   @impl true
@@ -162,6 +213,15 @@ defmodule CaHeoShopWeb.Admin.CustomerLive do
                         </button>
                         <button
                           type="button"
+                          class="btn btn-ghost btn-sm"
+                          phx-click="edit_customer"
+                          phx-value-id={customer.id}
+                          aria-label="Edit customer"
+                        >
+                          <span class="hero-pencil-square size-4"></span>
+                        </button>
+                        <button
+                          type="button"
                           class={["btn btn-sm", customer_toggle_button_class(customer)]}
                           aria-label={customer_toggle_button_label(customer)}
                         >
@@ -199,8 +259,73 @@ defmodule CaHeoShopWeb.Admin.CustomerLive do
             </div>
           </div>
         </section>
+
+        <.customer_dialog
+          show={@show_customer_dialog}
+          customer={@editing_customer}
+          form={@customer_form}
+        />
       </CaHeoShopWeb.AdminLive.admin_shell>
     </Layouts.app>
+    """
+  end
+
+  attr :show, :boolean, required: true
+  attr :customer, :any, required: true
+  attr :form, :any, required: true
+
+  def customer_dialog(assigns) do
+    ~H"""
+    <div
+      :if={@show}
+      class="fixed inset-0 z-50 flex items-center justify-center bg-base-content/30 p-4 backdrop-blur-sm"
+    >
+      <div class="w-full max-w-xl rounded-box border border-base-300 bg-base-100 shadow-xl">
+        <div class="p-6">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-lg font-semibold">Edit customer</h2>
+              <p class="mt-1 text-sm text-base-content/70">
+                Update the customer profile details used in admin and checkout flows.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm btn-circle"
+              aria-label="Close customer dialog"
+              phx-click="cancel_edit_customer"
+            >
+              <.icon name="hero-x-mark" class="size-5" />
+            </button>
+          </div>
+
+          <div :if={@customer} class="mt-4 rounded-box bg-base-200 p-4 text-sm text-base-content/70">
+            <p class="font-medium text-base-content">{display_name(@customer)}</p>
+            <p>{display_email(@customer)}</p>
+          </div>
+
+          <.form
+            for={@form}
+            id="customer-edit-form"
+            phx-change="validate_customer"
+            phx-submit="save_customer"
+            class="mt-6 space-y-4"
+          >
+            <.input field={@form[:fullname]} label="Full name" />
+            <.input field={@form[:phone_number]} label="Phone number" />
+
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" class="btn btn-ghost" phx-click="cancel_edit_customer">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">
+                Save
+              </button>
+            </div>
+          </.form>
+        </div>
+      </div>
+    </div>
     """
   end
 
@@ -286,6 +411,20 @@ defmodule CaHeoShopWeb.Admin.CustomerLive do
 
   defp customer_summary(from, to, total_count),
     do: "Showing #{from}-#{to} of #{total_count} customers"
+
+  defp open_customer_dialog(socket, %User{} = customer) do
+    socket
+    |> assign(:editing_customer, customer)
+    |> assign(:show_customer_dialog, true)
+    |> assign(:customer_form, to_form(Accounts.change_customer_profile(customer)))
+  end
+
+  defp close_customer_dialog(socket) do
+    socket
+    |> assign(:editing_customer, nil)
+    |> assign(:show_customer_dialog, false)
+    |> assign(:customer_form, to_form(Accounts.change_customer_profile(%User{role: "customer"})))
+  end
 
   defp format_datetime(nil), do: "-"
 

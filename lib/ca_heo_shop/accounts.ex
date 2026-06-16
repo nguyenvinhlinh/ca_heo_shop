@@ -91,6 +91,36 @@ defmodule CaHeoShop.Accounts do
     build_customer_index(entries, params, total_count, page, total_pages)
   end
 
+  def change_customer_profile(%User{role: "customer"} = user, attrs \\ %{}) do
+    User.admin_customer_profile_changeset(user, attrs)
+  end
+
+  def get_customer(id) do
+    case Repo.get(User, id) do
+      %User{role: "customer"} = user -> user
+      _other -> nil
+    end
+  end
+
+  def update_customer_profile(%User{} = user, attrs) do
+    case require_customer(user) do
+      {:ok, customer} ->
+        customer
+        |> User.admin_customer_profile_changeset(attrs)
+        |> Repo.update()
+
+      {:error, :not_found} = error ->
+        error
+    end
+  end
+
+  def update_customer_profile(user_id, attrs) do
+    case get_customer(user_id) do
+      %User{} = customer -> update_customer_profile(customer, attrs)
+      nil -> {:error, :not_found}
+    end
+  end
+
   @doc """
   Gets a single user.
 
@@ -401,6 +431,9 @@ defmodule CaHeoShop.Accounts do
         )
     }
   end
+
+  defp require_customer(%User{role: "customer"} = user), do: {:ok, user}
+  defp require_customer(%User{}), do: {:error, :not_found}
 
   defp normalize_customer_enabled_filter(value) when value in ["true", true], do: "true"
   defp normalize_customer_enabled_filter(value) when value in ["false", false], do: "false"

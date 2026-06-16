@@ -68,6 +68,13 @@ defmodule CaHeoShop.Accounts.User do
     |> add_account_constraints()
   end
 
+  def admin_customer_profile_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:fullname, :phone_number])
+    |> validate_length(:fullname, max: 255)
+    |> validate_length(:phone_number, max: 50)
+  end
+
   def roles, do: @roles
 
   defp validate_email_if_present(changeset, opts) do

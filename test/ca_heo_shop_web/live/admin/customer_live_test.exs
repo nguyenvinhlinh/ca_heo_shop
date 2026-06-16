@@ -42,6 +42,7 @@ defmodule CaHeoShopWeb.Admin.CustomerLiveTest do
     assert html =~ "Enabled"
     assert html =~ "Disabled"
     assert html =~ "View order"
+    assert html =~ "hero-pencil-square size-4"
     assert html =~ "Disable"
     assert html =~ "Enable"
     refute html =~ "Admin User"
@@ -146,5 +147,125 @@ defmodule CaHeoShopWeb.Admin.CustomerLiveTest do
     assert html =~ "Showing 1-1 of 1 customers"
     assert html =~ "Rows per page"
     assert html =~ "Page 1"
+  end
+
+  test "opens edit dialog with prefilled customer info", %{conn: conn} do
+    customer =
+      customer_user_fixture(%{
+        fullname: "Editable Customer",
+        email: "editable@example.com",
+        phone_number: "0900 111 222"
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/customers")
+
+    render_click(element(view, ~s(#customer-#{customer.id} [aria-label="Edit customer"])))
+
+    assert has_element?(view, "#customer-edit-form")
+    assert has_element?(view, ~s(input[name="user[fullname]"][value="Editable Customer"]))
+    assert has_element?(view, ~s(input[name="user[phone_number]"][value="0900 111 222"]))
+    assert render(view) =~ "editable@example.com"
+  end
+
+  test "saves edited customer info and preserves current index filters", %{conn: conn} do
+    target_customer =
+      customer_user_fixture(%{
+        fullname: "Paged Customer 1",
+        email: "paged-1@example.com",
+        phone_number: "0900 111 222"
+      })
+
+    for index <- 2..30 do
+      customer_user_fixture(%{
+        fullname: "Paged Customer #{index}",
+        email: "paged-#{index}@example.com"
+      })
+    end
+
+    {:ok, view, _html} = live(conn, ~p"/admin/customers?page=2")
+
+    assert render(view) =~ "Showing 26-30 of 30 customers"
+
+    render_click(element(view, ~s(#customer-#{target_customer.id} [aria-label="Edit customer"])))
+
+    render_submit(element(view, "#customer-edit-form"), %{
+      "user" => %{
+        "fullname" => "Updated Paged Customer",
+        "phone_number" => "0988 777 666"
+      }
+    })
+
+    html = render(view)
+    assert html =~ "Customer updated successfully."
+    assert html =~ "Updated Paged Customer"
+    assert html =~ "0988 777 666"
+    assert html =~ "Showing 26-30 of 30 customers"
+
+    updated_customer = CaHeoShop.Accounts.get_user!(target_customer.id)
+    assert updated_customer.fullname == "Updated Paged Customer"
+    assert updated_customer.phone_number == "0988 777 666"
+  end
+
+  test "shows validation errors and keeps entered values on invalid save", %{conn: conn} do
+    customer =
+      customer_user_fixture(%{fullname: "Validation Customer", phone_number: "0900 111 222"})
+
+    too_long_name = String.duplicate("a", 256)
+    too_long_phone = String.duplicate("1", 51)
+
+    {:ok, view, _html} = live(conn, ~p"/admin/customers")
+
+    render_click(element(view, ~s(#customer-#{customer.id} [aria-label="Edit customer"])))
+
+    html =
+      render_submit(element(view, "#customer-edit-form"), %{
+        "user" => %{
+          "fullname" => too_long_name,
+          "phone_number" => too_long_phone
+        }
+      })
+
+    assert html =~ "should be at most 255 character(s)"
+    assert html =~ "should be at most 50 character(s)"
+    assert has_element?(view, "#customer-edit-form")
+    assert html =~ too_long_phone
+
+    unchanged_customer = CaHeoShop.Accounts.get_user!(customer.id)
+    assert unchanged_customer.fullname == "Validation Customer"
+    assert unchanged_customer.phone_number == "0900 111 222"
+  end
+
+  test "cancel closes the dialog without saving and preserves filters", %{conn: conn} do
+    customer =
+      customer_user_fixture(%{
+        fullname: "Cancelable Customer",
+        email: "cancel@example.com",
+        phone_number: "0900 111 222"
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/admin/customers?enabled=all&page=1&page_size=25&q=cancel")
+
+    render_click(element(view, ~s(#customer-#{customer.id} [aria-label="Edit customer"])))
+    assert has_element?(view, "#customer-edit-form")
+
+    render_click(element(view, ~s(#customer-edit-form button[type="button"])))
+
+    refute has_element?(view, "#customer-edit-form")
+    assert render(view) =~ "Showing 1-1 of 1 customers"
+
+    unchanged_customer = CaHeoShop.Accounts.get_user!(customer.id)
+    assert unchanged_customer.fullname == "Cancelable Customer"
+    assert unchanged_customer.phone_number == "0900 111 222"
+  end
+
+  test "rejects editing non-customer users", %{conn: conn} do
+    admin_user = admin_user_fixture(%{fullname: "Admin User"})
+
+    {:ok, view, _html} = live(conn, ~p"/admin/customers")
+
+    render_click(view, "edit_customer", %{"id" => Integer.to_string(admin_user.id)})
+
+    assert render(view) =~ "Customer not found."
+    refute has_element?(view, "#customer-edit-form")
   end
 end
